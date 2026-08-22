@@ -339,6 +339,7 @@ export function updateThresholds(partial: Partial<Thresholds>) {
 }
 
 function ensureSimulator() {
+  if (process.env.DISABLE_SIMULATOR === "true") return;
   const state = getState();
   if (state.timer) return;
   state.timer = setInterval(() => {
