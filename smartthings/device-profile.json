@@ -1,0 +1,14 @@
+{
+  "name": "Vortigen Wind Turbine",
+  "components": [
+    {
+      "id": "main",
+      "capabilities": [
+        { "id": "__CAP_ID__", "version": 1 },
+        { "id": "battery", "version": 1 },
+        { "id": "refresh", "version": 1 }
+      ],
+      "categories": [{ "name": "Other", "primary": true }]
+    }
+  ]
+}

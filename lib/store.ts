@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { pushToSmartThings } from "./smartthings";
 import type {
   DemoMode,
   DerivedState,
@@ -304,6 +305,9 @@ function applyTelemetry(state: InternalState, input: TelemetryInput) {
   if (state.derived.tier === 3 || state.derived.tier === 4) {
     pushNotification(state, state.derived.tier);
   }
+
+  // Fire-and-forget: a SmartThings outage must never slow down or break local telemetry.
+  void pushToSmartThings(state.telemetry, state.derived);
 
   state.emitter.emit("update");
 }

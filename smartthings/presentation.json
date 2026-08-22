@@ -1,0 +1,70 @@
+{
+  "dashboard": {
+    "states": [
+      {
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "systemStatus",
+        "label": "{{systemStatus.value}}",
+        "alternatives": [
+          { "key": "normal", "value": "normal", "label": "Normal" },
+          { "key": "peringatanDini", "value": "peringatanDini", "label": "Peringatan Dini" },
+          { "key": "kritis", "value": "kritis", "label": "Kritis" },
+          { "key": "mati", "value": "mati", "label": "Mati" }
+        ]
+      }
+    ],
+    "actions": []
+  },
+  "detailView": [
+    {
+      "capability": "__CAP_ID__",
+      "version": 1,
+      "component": "main",
+      "attribute": "systemStatus",
+      "label": "Status Sistem",
+      "displayType": "list",
+      "list": {
+        "alternatives": [
+          { "key": "normal", "value": "Normal" },
+          { "key": "peringatanDini", "value": "Peringatan Dini" },
+          { "key": "kritis", "value": "Kritis" },
+          { "key": "mati", "value": "Mati" }
+        ]
+      }
+    },
+    {
+      "capability": "__CAP_ID__",
+      "version": 1,
+      "component": "main",
+      "attribute": "windSpeed",
+      "label": "Kecepatan Angin",
+      "displayType": "numberField"
+    },
+    {
+      "capability": "__CAP_ID__",
+      "version": 1,
+      "component": "main",
+      "attribute": "structuralStress",
+      "label": "Beban Struktur",
+      "displayType": "numberField"
+    },
+    {
+      "capability": "__CAP_ID__",
+      "version": 1,
+      "component": "main",
+      "attribute": "energyOutput",
+      "label": "Energi Aktif",
+      "displayType": "numberField"
+    },
+    {
+      "capability": "__CAP_ID__",
+      "version": 1,
+      "component": "main",
+      "attribute": "predictedLifespan",
+      "label": "Prediksi Umur Pakai",
+      "displayType": "numberField"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "name": "Vortigen Telemetry",
+  "attributes": {
+    "windSpeed": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "number", "minimum": 0, "maximum": 60 },
+          "unit": { "type": "string", "enum": ["m/s"], "default": "m/s" }
+        },
+        "additionalProperties": false,
+        "required": ["value"]
+      }
+    },
+    "structuralStress": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "number", "minimum": 0, "maximum": 50 },
+          "unit": { "type": "string", "enum": ["kPa"], "default": "kPa" }
+        },
+        "additionalProperties": false,
+        "required": ["value"]
+      }
+    },
+    "energyOutput": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "number", "minimum": 0, "maximum": 50 },
+          "unit": { "type": "string", "enum": ["kW"], "default": "kW" }
+        },
+        "additionalProperties": false,
+        "required": ["value"]
+      }
+    },
+    "predictedLifespan": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "number", "minimum": 0, "maximum": 999 },
+          "unit": { "type": "string", "enum": ["days"], "default": "days" }
+        },
+        "additionalProperties": false,
+        "required": ["value"]
+      }
+    },
+    "systemStatus": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": ["normal", "peringatanDini", "kritis", "mati"]
+          }
+        },
+        "additionalProperties": false,
+        "required": ["value"]
+      }
+    }
+  }
+}
