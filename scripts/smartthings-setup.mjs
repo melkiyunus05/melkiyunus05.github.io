@@ -24,6 +24,18 @@ import path from "node:path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const API = "https://api.smartthings.com/v1";
+const ENV_PATH = path.join(ROOT, ".env.local");
+
+function readExistingEnv() {
+  if (!existsSync(ENV_PATH)) return {};
+  const out = {};
+  for (const line of readFileSync(ENV_PATH, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z_]+)=(.*)$/);
+    if (m) out[m[1]] = m[2];
+  }
+  return out;
+}
+const existingEnv = readExistingEnv();
 
 const PAT = process.env.SMARTTHINGS_PAT;
 if (!PAT) {
@@ -78,15 +90,22 @@ function readJson(relPath) {
 
 async function main() {
   console.log("== 1/5: Membuat custom capability 'Vortigen Telemetry' ==");
-  let capability;
-  try {
-    capability = await st("POST", "/capabilities", readJson("smartthings/capability.json"));
-  } catch (err) {
-    fail("create capability", err);
+  let capId = existingEnv.SMARTTHINGS_CAPABILITY_ID;
+  let capVersion = 1;
+  if (capId) {
+    console.log(`✓ Sudah ada di .env.local, dipakai ulang: capabilityId = ${capId}`);
+    console.log("  (Hapus baris SMARTTHINGS_CAPABILITY_ID dari .env.local kalau mau bikin capability baru.)");
+  } else {
+    let capability;
+    try {
+      capability = await st("POST", "/capabilities", readJson("smartthings/capability.json"));
+    } catch (err) {
+      fail("create capability", err);
+    }
+    capId = capability.id;
+    capVersion = capability.version ?? 1;
+    console.log(`✓ capabilityId = ${capId} (version ${capVersion})`);
   }
-  const capId = capability.id;
-  const capVersion = capability.version ?? 1;
-  console.log(`✓ capabilityId = ${capId} (version ${capVersion})`);
 
   console.log("\n== 2/5: Mengunggah presentation (tampilan dashboard) ==");
   try {
@@ -103,18 +122,36 @@ async function main() {
   }
 
   console.log("\n== 3/5: Membuat device profile 'Vortigen Wind Turbine' ==");
+  // The exact set of valid category names isn't published anywhere reachable from this
+  // script, so we probe the live API with a few likely candidates for a power-generation /
+  // energy-monitoring device, then fall back to no category at all (always accepted).
+  const CATEGORY_CANDIDATES = ["CurbPowerMeter", "PowerMeter", "EnergyMeter", "SmartPlug", null];
+  const profileRaw = readFileSync(path.join(ROOT, "smartthings/device-profile.json"), "utf8").replace(
+    /__CAP_ID__/g,
+    capId
+  );
   let profile;
-  try {
-    const profileTemplate = readFileSync(path.join(ROOT, "smartthings/device-profile.json"), "utf8").replace(
-      /__CAP_ID__/g,
-      capId
-    );
-    profile = await st("POST", "/deviceprofiles", JSON.parse(profileTemplate));
-  } catch (err) {
-    fail("create device profile", err);
+  let usedCategory;
+  for (const category of CATEGORY_CANDIDATES) {
+    const body = JSON.parse(profileRaw);
+    if (category) {
+      body.components[0].categories = [{ name: category, primary: true }];
+    } else {
+      delete body.components[0].categories;
+    }
+    try {
+      profile = await st("POST", "/deviceprofiles", body);
+      usedCategory = category;
+      break;
+    } catch (err) {
+      const invalidCategory = err.body?.error?.details?.some?.((d) => /categories/.test(d.target ?? "")) ?? true;
+      console.warn(`  kategori '${category ?? "(tanpa kategori)"}' ditolak, mencoba berikutnya...`);
+      if (!invalidCategory) fail("create device profile", err);
+    }
   }
+  if (!profile) fail("create device profile", new Error("Semua kandidat kategori ditolak API."));
   const profileId = profile.id;
-  console.log(`✓ deviceProfileId = ${profileId}`);
+  console.log(`✓ deviceProfileId = ${profileId} (kategori dipakai: ${usedCategory ?? "tanpa kategori"})`);
 
   console.log("\n== 4/5: Mencari lokasi (location) SmartThings Anda ==");
   let locationId = process.env.SMARTTHINGS_LOCATION_ID;

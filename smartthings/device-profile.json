@@ -8,7 +8,7 @@
         { "id": "battery", "version": 1 },
         { "id": "refresh", "version": 1 }
       ],
-      "categories": [{ "name": "Other", "primary": true }]
+      "categories": [{ "name": "__CATEGORY__", "primary": true }]
     }
   ]
 }

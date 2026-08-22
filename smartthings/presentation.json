@@ -6,13 +6,7 @@
         "version": 1,
         "component": "main",
         "attribute": "systemStatus",
-        "label": "{{systemStatus.value}}",
-        "alternatives": [
-          { "key": "normal", "value": "normal", "label": "Normal" },
-          { "key": "peringatanDini", "value": "peringatanDini", "label": "Peringatan Dini" },
-          { "key": "kritis", "value": "kritis", "label": "Kritis" },
-          { "key": "mati", "value": "mati", "label": "Mati" }
-        ]
+        "label": "{{systemStatus.value}}"
       }
     ],
     "actions": []
@@ -24,15 +18,7 @@
       "component": "main",
       "attribute": "systemStatus",
       "label": "Status Sistem",
-      "displayType": "list",
-      "list": {
-        "alternatives": [
-          { "key": "normal", "value": "Normal" },
-          { "key": "peringatanDini", "value": "Peringatan Dini" },
-          { "key": "kritis", "value": "Kritis" },
-          { "key": "mati", "value": "Mati" }
-        ]
-      }
+      "displayType": "textField"
     },
     {
       "capability": "__CAP_ID__",
