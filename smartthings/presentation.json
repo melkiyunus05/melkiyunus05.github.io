@@ -2,55 +2,77 @@
   "dashboard": {
     "states": [
       {
-        "capability": "__CAP_ID__",
-        "version": 1,
-        "component": "main",
-        "attribute": "systemStatus",
-        "label": "{{systemStatus.value}}"
+        "label": "{{value}}",
+        "value": {
+          "capability": "__CAP_ID__",
+          "version": 1,
+          "component": "main",
+          "attribute": "systemStatus"
+        }
       }
     ],
     "actions": []
   },
   "detailView": [
     {
-      "capability": "__CAP_ID__",
-      "version": 1,
-      "component": "main",
-      "attribute": "systemStatus",
       "label": "Status Sistem",
-      "displayType": "textField"
+      "displayType": "textField",
+      "textField": {
+        "value": {
+          "capability": "__CAP_ID__",
+          "version": 1,
+          "component": "main",
+          "attribute": "systemStatus"
+        }
+      }
     },
     {
-      "capability": "__CAP_ID__",
-      "version": 1,
-      "component": "main",
-      "attribute": "windSpeed",
       "label": "Kecepatan Angin",
-      "displayType": "numberField"
+      "displayType": "numberField",
+      "numberField": {
+        "value": {
+          "capability": "__CAP_ID__",
+          "version": 1,
+          "component": "main",
+          "attribute": "windSpeed"
+        }
+      }
     },
     {
-      "capability": "__CAP_ID__",
-      "version": 1,
-      "component": "main",
-      "attribute": "structuralStress",
       "label": "Beban Struktur",
-      "displayType": "numberField"
+      "displayType": "numberField",
+      "numberField": {
+        "value": {
+          "capability": "__CAP_ID__",
+          "version": 1,
+          "component": "main",
+          "attribute": "structuralStress"
+        }
+      }
     },
     {
-      "capability": "__CAP_ID__",
-      "version": 1,
-      "component": "main",
-      "attribute": "energyOutput",
       "label": "Energi Aktif",
-      "displayType": "numberField"
+      "displayType": "numberField",
+      "numberField": {
+        "value": {
+          "capability": "__CAP_ID__",
+          "version": 1,
+          "component": "main",
+          "attribute": "energyOutput"
+        }
+      }
     },
     {
-      "capability": "__CAP_ID__",
-      "version": 1,
-      "component": "main",
-      "attribute": "predictedLifespan",
       "label": "Prediksi Umur Pakai",
-      "displayType": "numberField"
+      "displayType": "numberField",
+      "numberField": {
+        "value": {
+          "capability": "__CAP_ID__",
+          "version": 1,
+          "component": "main",
+          "attribute": "predictedLifespan"
+        }
+      }
     }
   ]
 }
