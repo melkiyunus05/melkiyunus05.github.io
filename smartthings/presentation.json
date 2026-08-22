@@ -3,6 +3,7 @@
     "states": [
       {
         "label": "{{value}}",
+        "displayType": "text",
         "value": {
           "capability": "__CAP_ID__",
           "version": 1,
@@ -17,61 +18,51 @@
     {
       "label": "Status Sistem",
       "displayType": "textField",
-      "textField": {
-        "value": {
-          "capability": "__CAP_ID__",
-          "version": 1,
-          "component": "main",
-          "attribute": "systemStatus"
-        }
+      "value": {
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "systemStatus"
       }
     },
     {
       "label": "Kecepatan Angin",
       "displayType": "numberField",
-      "numberField": {
-        "value": {
-          "capability": "__CAP_ID__",
-          "version": 1,
-          "component": "main",
-          "attribute": "windSpeed"
-        }
+      "value": {
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "windSpeed"
       }
     },
     {
       "label": "Beban Struktur",
       "displayType": "numberField",
-      "numberField": {
-        "value": {
-          "capability": "__CAP_ID__",
-          "version": 1,
-          "component": "main",
-          "attribute": "structuralStress"
-        }
+      "value": {
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "structuralStress"
       }
     },
     {
       "label": "Energi Aktif",
       "displayType": "numberField",
-      "numberField": {
-        "value": {
-          "capability": "__CAP_ID__",
-          "version": 1,
-          "component": "main",
-          "attribute": "energyOutput"
-        }
+      "value": {
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "energyOutput"
       }
     },
     {
       "label": "Prediksi Umur Pakai",
       "displayType": "numberField",
-      "numberField": {
-        "value": {
-          "capability": "__CAP_ID__",
-          "version": 1,
-          "component": "main",
-          "attribute": "predictedLifespan"
-        }
+      "value": {
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "predictedLifespan"
       }
     }
   ]

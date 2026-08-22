@@ -220,6 +220,10 @@ async function main() {
         deviceProfileId: profileId,
         locationId,
         roomId: null,
+        owner: {
+          ownerType: "LOCATION",
+          ownerId: locationId,
+        },
       });
     } catch (err) {
       fail("create virtual device", err);
