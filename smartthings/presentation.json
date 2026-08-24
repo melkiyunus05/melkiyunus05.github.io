@@ -3,13 +3,10 @@
     "states": [
       {
         "label": "{{value}}",
-        "displayType": "text",
-        "value": {
-          "capability": "__CAP_ID__",
-          "version": 1,
-          "component": "main",
-          "attribute": "systemStatus"
-        }
+        "capability": "__CAP_ID__",
+        "version": 1,
+        "component": "main",
+        "attribute": "systemStatus"
       }
     ],
     "actions": []
@@ -18,7 +15,7 @@
     {
       "label": "Status Sistem",
       "displayType": "textField",
-      "value": {
+      "textField": {
         "capability": "__CAP_ID__",
         "version": 1,
         "component": "main",
@@ -28,7 +25,7 @@
     {
       "label": "Kecepatan Angin",
       "displayType": "numberField",
-      "value": {
+      "numberField": {
         "capability": "__CAP_ID__",
         "version": 1,
         "component": "main",
@@ -38,7 +35,7 @@
     {
       "label": "Beban Struktur",
       "displayType": "numberField",
-      "value": {
+      "numberField": {
         "capability": "__CAP_ID__",
         "version": 1,
         "component": "main",
@@ -48,7 +45,7 @@
     {
       "label": "Energi Aktif",
       "displayType": "numberField",
-      "value": {
+      "numberField": {
         "capability": "__CAP_ID__",
         "version": 1,
         "component": "main",
@@ -58,7 +55,7 @@
     {
       "label": "Prediksi Umur Pakai",
       "displayType": "numberField",
-      "value": {
+      "numberField": {
         "capability": "__CAP_ID__",
         "version": 1,
         "component": "main",
