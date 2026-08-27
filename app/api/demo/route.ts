@@ -18,6 +18,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `mode harus salah satu dari: ${VALID_MODES.join(", ")}` }, { status: 400 });
   }
 
-  const result = setDemoMode(body.mode as DemoMode);
+  const result = await setDemoMode(body.mode as DemoMode);
   return NextResponse.json(result);
 }

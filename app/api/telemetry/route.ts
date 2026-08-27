@@ -5,7 +5,7 @@ import type { TelemetryInput } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(snapshot());
+  return NextResponse.json(await snapshot());
 }
 
 export async function POST(req: NextRequest) {
@@ -30,6 +30,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const result = ingestTelemetry(body as TelemetryInput);
+  const result = await ingestTelemetry(body as TelemetryInput);
   return NextResponse.json(result);
 }

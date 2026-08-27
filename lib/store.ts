@@ -1,4 +1,4 @@
-import { EventEmitter } from "events";
+import { Redis } from "@upstash/redis";
 import { pushToSmartThings } from "./smartthings";
 import type {
   DemoMode,
@@ -19,6 +19,7 @@ const NORMAL_MAX_WIND_SPEED = 9; // m/s, edge of normal harvesting band
 const EFFICIENCY_DROP_WARNING_PCT = 15;
 const LOW_LIFESPAN_WARNING_DAYS = 30;
 const PROLONGED_PROTECTION_TICKS = 3; // consecutive high-wind ticks before it counts as "prolonged"
+const REDIS_KEY = "vortigen:state";
 
 function round(n: number, d = 2) {
   const f = Math.pow(10, d);
@@ -48,22 +49,20 @@ const CRITICAL_MESSAGE = {
   message: "Beban struktur melebihi ambang aman — hentikan operasi & periksa segera.",
 };
 
-// --- singleton store (survives HMR via globalThis) --------------------------
+// --- persisted state shape ---------------------------------------------------
+// Everything here is plain JSON — safe to store in Redis and share across
+// serverless instances. Process-local things (timers) live outside this shape.
 
-interface InternalState {
+interface PersistedState {
   telemetry: Telemetry;
   derived: DerivedState;
   thresholds: Thresholds;
   demoMode: DemoMode;
   notifications: NotificationItem[];
   protectionStreak: number;
-  emitter: EventEmitter;
-  timer: ReturnType<typeof setInterval> | null;
   weekly: HistoryPoint[];
   monthly: HistoryPoint[];
 }
-
-const g = globalThis as unknown as { __vortigenStore?: InternalState };
 
 function buildInitialTelemetry(): Telemetry {
   return {
@@ -104,7 +103,7 @@ function buildHistory() {
   return { weekly, monthly };
 }
 
-function initState(): InternalState {
+function buildInitialPersistedState(): PersistedState {
   const { weekly, monthly } = buildHistory();
   const telemetry = buildInitialTelemetry();
   const thresholds = buildInitialThresholds();
@@ -124,27 +123,60 @@ function initState(): InternalState {
       },
     ],
     protectionStreak: 0,
-    emitter: new EventEmitter(),
-    timer: null,
     weekly,
     monthly,
   };
 }
 
-function getState(): InternalState {
-  if (!g.__vortigenStore) {
-    g.__vortigenStore = initState();
+// --- persistence backends ---------------------------------------------------
+// Redis (Upstash, via Vercel Marketplace or a manual Upstash project) when
+// configured — this is what makes state consistent across serverless
+// instances. Falls back to an in-process singleton otherwise, so local
+// `npm run dev` keeps working with zero setup.
+
+let redisClient: Redis | null | undefined;
+
+function getRedisClient(): Redis | null {
+  if (redisClient !== undefined) return redisClient;
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  redisClient = url && token ? new Redis({ url, token }) : null;
+  return redisClient;
+}
+
+const local = (globalThis as unknown as { __vortigenLocal?: { state: PersistedState | null; timer: ReturnType<typeof setInterval> | null } }).__vortigenLocal ??
+  ((globalThis as unknown as { __vortigenLocal: { state: PersistedState | null; timer: ReturnType<typeof setInterval> | null } }).__vortigenLocal = {
+    state: null,
+    timer: null,
+  });
+
+async function loadState(): Promise<PersistedState> {
+  const redis = getRedisClient();
+  if (redis) {
+    const existing = await redis.get<PersistedState>(REDIS_KEY);
+    if (existing) return existing;
+    const fresh = buildInitialPersistedState();
+    await redis.set(REDIS_KEY, fresh);
+    return fresh;
   }
-  return g.__vortigenStore;
+  if (!local.state) {
+    local.state = buildInitialPersistedState();
+  }
+  return local.state;
+}
+
+async function saveState(state: PersistedState): Promise<void> {
+  const redis = getRedisClient();
+  if (redis) {
+    await redis.set(REDIS_KEY, state);
+  } else {
+    local.state = state;
+  }
 }
 
 // --- tier / derived-state computation ---------------------------------------
 
-function computeDerivedState(
-  t: Telemetry,
-  thresholds: Thresholds,
-  protectionStreak: number
-): DerivedState {
+function computeDerivedState(t: Telemetry, thresholds: Thresholds, protectionStreak: number): DerivedState {
   const isOff = t.windSpeed < CUT_IN_WIND_SPEED;
   const structuralSafe = t.structuralStress <= thresholds.structuralStressWarningKPa;
   const protectionModeActive = t.windSpeed > NORMAL_MAX_WIND_SPEED;
@@ -173,7 +205,10 @@ function computeDerivedState(
     tier = 2;
   }
 
-  const tierMeta: Record<Tier, { tierName: DerivedState["tierName"]; statusColor: DerivedState["statusColor"]; statusText: string }> = {
+  const tierMeta: Record<
+    Tier,
+    { tierName: DerivedState["tierName"]; statusColor: DerivedState["statusColor"]; statusText: string }
+  > = {
     1: {
       tierName: "Mati",
       statusColor: "off",
@@ -215,30 +250,26 @@ function computeDerivedState(
 
 // --- notification helpers ---------------------------------------------------
 
-function pushNotification(state: InternalState, tier: Tier) {
-  if (!state.thresholds.pushNotificationsEnabled) return;
-  const last = state.notifications[0];
-  if (last && last.tier === tier && Date.now() - last.timestamp < 20_000) return;
+function pushNotification(notifications: NotificationItem[], thresholds: Thresholds, tier: Tier): NotificationItem[] {
+  if (!thresholds.pushNotificationsEnabled) return notifications;
+  const last = notifications[0];
+  if (last && last.tier === tier && Date.now() - last.timestamp < 20_000) return notifications;
 
+  let entry: NotificationItem | null = null;
   if (tier === 3) {
     const pick = WARNING_MESSAGES[Math.floor(Math.random() * WARNING_MESSAGES.length)];
-    state.notifications.unshift({
-      id: `n-${Date.now()}`,
-      timestamp: Date.now(),
-      tier,
-      title: pick.title,
-      message: pick.message,
-    });
+    entry = { id: `n-${Date.now()}`, timestamp: Date.now(), tier, title: pick.title, message: pick.message };
   } else if (tier === 4) {
-    state.notifications.unshift({
+    entry = {
       id: `n-${Date.now()}`,
       timestamp: Date.now(),
       tier,
       title: CRITICAL_MESSAGE.title,
       message: CRITICAL_MESSAGE.message,
-    });
+    };
   }
-  state.notifications = state.notifications.slice(0, 50);
+  if (!entry) return notifications;
+  return [entry, ...notifications].slice(0, 50);
 }
 
 // --- telemetry generation (simulated ESP32) ---------------------------------
@@ -294,65 +325,24 @@ function generateTelemetry(mode: DemoMode, prev: Telemetry): TelemetryInput {
   }
 }
 
-function applyTelemetry(state: InternalState, input: TelemetryInput) {
+async function applyTelemetry(state: PersistedState, input: TelemetryInput): Promise<PersistedState> {
   const telemetry: Telemetry = { ...input, timestamp: Date.now() };
   const protectionModeActive = telemetry.windSpeed > NORMAL_MAX_WIND_SPEED;
-  state.protectionStreak = protectionModeActive ? state.protectionStreak + 1 : 0;
+  const protectionStreak = protectionModeActive ? state.protectionStreak + 1 : 0;
+  const derived = computeDerivedState(telemetry, state.thresholds, protectionStreak);
 
-  state.telemetry = telemetry;
-  state.derived = computeDerivedState(telemetry, state.thresholds, state.protectionStreak);
-
-  if (state.derived.tier === 3 || state.derived.tier === 4) {
-    pushNotification(state, state.derived.tier);
+  let notifications = state.notifications;
+  if (derived.tier === 3 || derived.tier === 4) {
+    notifications = pushNotification(notifications, state.thresholds, derived.tier);
   }
 
-  // Fire-and-forget: a SmartThings outage must never slow down or break local telemetry.
-  void pushToSmartThings(state.telemetry, state.derived);
+  // Fire-and-forget: a SmartThings outage must never slow down or break telemetry.
+  void pushToSmartThings(telemetry, derived);
 
-  state.emitter.emit("update");
+  return { ...state, telemetry, derived, protectionStreak, notifications };
 }
 
-export function ingestTelemetry(input: TelemetryInput) {
-  const state = getState();
-  applyTelemetry(state, input);
-  return snapshot();
-}
-
-export function setDemoMode(mode: DemoMode) {
-  const state = getState();
-  state.demoMode = mode;
-  if (mode === "normal") {
-    state.protectionStreak = 0;
-  }
-  // Immediately generate one matching reading so the UI reacts without delay.
-  const input = generateTelemetry(mode, state.telemetry);
-  applyTelemetry(state, input);
-  return snapshot();
-}
-
-export function updateThresholds(partial: Partial<Thresholds>) {
-  const state = getState();
-  state.thresholds = { ...state.thresholds, ...partial };
-  state.derived = computeDerivedState(state.telemetry, state.thresholds, state.protectionStreak);
-  state.emitter.emit("update");
-  return state.thresholds;
-}
-
-function ensureSimulator() {
-  if (process.env.DISABLE_SIMULATOR === "true") return;
-  const state = getState();
-  if (state.timer) return;
-  state.timer = setInterval(() => {
-    const s = getState();
-    const input = generateTelemetry(s.demoMode, s.telemetry);
-    applyTelemetry(s, input);
-  }, 3000);
-  if (typeof state.timer.unref === "function") state.timer.unref();
-}
-
-export function snapshot(): StoreSnapshot {
-  const state = getState();
-  ensureSimulator();
+function toSnapshot(state: PersistedState): StoreSnapshot {
   const monthlyTotal = round(
     state.monthly.reduce((a, p) => a + p.kwh, 0),
     1
@@ -373,9 +363,51 @@ export function snapshot(): StoreSnapshot {
   };
 }
 
-export function subscribe(listener: () => void) {
-  const state = getState();
+export async function ingestTelemetry(input: TelemetryInput): Promise<StoreSnapshot> {
+  const state = await loadState();
+  const next = await applyTelemetry(state, input);
+  await saveState(next);
+  return toSnapshot(next);
+}
+
+export async function setDemoMode(mode: DemoMode): Promise<StoreSnapshot> {
+  const state = await loadState();
+  const reset: PersistedState = mode === "normal" ? { ...state, demoMode: mode, protectionStreak: 0 } : { ...state, demoMode: mode };
+  // Immediately generate one matching reading so the UI reacts without delay.
+  const input = generateTelemetry(mode, reset.telemetry);
+  const next = await applyTelemetry(reset, input);
+  await saveState(next);
+  return toSnapshot(next);
+}
+
+export async function updateThresholds(partial: Partial<Thresholds>): Promise<Thresholds> {
+  const state = await loadState();
+  const thresholds = { ...state.thresholds, ...partial };
+  const derived = computeDerivedState(state.telemetry, thresholds, state.protectionStreak);
+  await saveState({ ...state, thresholds, derived });
+  return thresholds;
+}
+
+// The ambient "app feels alive" auto-generator only makes sense on a
+// long-lived process (local `npm run dev`/`next start`, a VPS, etc). On
+// serverless (Redis configured) there's no persistent process to run a
+// setInterval on, so real updates there come only from actual POSTs
+// (ESP32) or demo-control clicks — which is correct behavior there anyway.
+function ensureSimulator() {
+  if (process.env.DISABLE_SIMULATOR === "true") return;
+  if (getRedisClient()) return;
+  if (local.timer) return;
+  local.timer = setInterval(async () => {
+    const state = await loadState();
+    const input = generateTelemetry(state.demoMode, state.telemetry);
+    const next = await applyTelemetry(state, input);
+    await saveState(next);
+  }, 3000);
+  if (typeof local.timer.unref === "function") local.timer.unref();
+}
+
+export async function snapshot(): Promise<StoreSnapshot> {
   ensureSimulator();
-  state.emitter.on("update", listener);
-  return () => state.emitter.off("update", listener);
+  const state = await loadState();
+  return toSnapshot(state);
 }

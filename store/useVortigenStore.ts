@@ -17,37 +17,39 @@ export const useVortigenStore = create<VortigenState>((set) => ({
   setSnapshot: (s) => set({ ...s, loading: false }),
   setConnected: (c) => set({ connected: c }),
   triggerDemo: async (mode) => {
-    await fetch("/api/demo", {
+    const res = await fetch("/api/demo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode }),
     });
+    if (res.ok) {
+      // Apply immediately instead of waiting for the next poll tick, so a
+      // button press feels instant during a live demo.
+      const data: StoreSnapshot = await res.json();
+      useVortigenStore.getState().setSnapshot(data);
+    }
   },
 }));
 
+const POLL_INTERVAL_MS = 2000;
 let started = false;
 
-export function startVortigenStream() {
+export function startVortigenPolling() {
   if (started || typeof window === "undefined") return;
   started = true;
 
-  const connect = () => {
-    const es = new EventSource("/api/stream");
-    es.onopen = () => useVortigenStore.getState().setConnected(true);
-    es.onmessage = (evt) => {
-      try {
-        const data: StoreSnapshot = JSON.parse(evt.data);
-        useVortigenStore.getState().setSnapshot(data);
-      } catch {
-        // ignore malformed frame
-      }
-    };
-    es.onerror = () => {
+  const tick = async () => {
+    try {
+      const res = await fetch("/api/telemetry", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: StoreSnapshot = await res.json();
+      useVortigenStore.getState().setSnapshot(data);
+      useVortigenStore.getState().setConnected(true);
+    } catch {
       useVortigenStore.getState().setConnected(false);
-      es.close();
-      setTimeout(connect, 2000);
-    };
+    }
   };
 
-  connect();
+  tick();
+  setInterval(tick, POLL_INTERVAL_MS);
 }

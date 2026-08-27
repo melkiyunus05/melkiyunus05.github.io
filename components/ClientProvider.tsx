@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { startVortigenStream } from "@/store/useVortigenStore";
+import { startVortigenPolling } from "@/store/useVortigenStore";
 
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    startVortigenStream();
+    startVortigenPolling();
   }, []);
 
   return <>{children}</>;

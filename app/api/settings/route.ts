@@ -4,7 +4,8 @@ import { snapshot, updateThresholds } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(snapshot().thresholds);
+  const s = await snapshot();
+  return NextResponse.json(s.thresholds);
 }
 
 export async function POST(req: NextRequest) {
@@ -23,6 +24,6 @@ export async function POST(req: NextRequest) {
     patch.pushNotificationsEnabled = body.pushNotificationsEnabled;
   }
 
-  const thresholds = updateThresholds(patch);
+  const thresholds = await updateThresholds(patch);
   return NextResponse.json(thresholds);
 }
