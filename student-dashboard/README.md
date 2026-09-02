@@ -8,7 +8,7 @@ with a Notion API integration for class notes.
 
 ## Status
 
-Being built iteratively. Current step: **Step 3 — Frontend Foundation (Streamlit layout)**.
+Being built iteratively. Current step: **Step 3 - Frontend Foundation (Streamlit layout)**.
 
 ## Project structure
 
