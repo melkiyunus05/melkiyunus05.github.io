@@ -76,6 +76,7 @@ class ScheduleItem(Base):
     end_time: Mapped[time] = mapped_column(Time, nullable=False)
     location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     lecturer: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    role: Mapped[str] = mapped_column(String(50), default="Student", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
@@ -136,6 +137,7 @@ class CompetitionMilestone(Base):
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_completed: Mapped[bool] = mapped_column(default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submission_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     competition: Mapped["Competition"] = relationship(back_populates="milestones")
 
