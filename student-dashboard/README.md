@@ -8,7 +8,7 @@ with a Notion API integration for class notes.
 
 ## Status
 
-Being built iteratively. Current step: **Step 2 — Backend Core (FastAPI CRUD)**.
+Being built iteratively. Current step: **Step 3 — Frontend Foundation (Streamlit layout)**.
 
 ## Project structure
 
@@ -25,7 +25,8 @@ student-dashboard/
 │       ├── tasks.py
 │       ├── competitions.py
 │       └── finances.py
-├── frontend/               # Streamlit app (added in Step 3)
+├── frontend/
+│   └── app.py              # Streamlit app: sidebar nav + page layout (placeholders for now)
 ├── data/                   # SQLite database file lives here (gitignored)
 └── requirements.txt
 ```
@@ -83,3 +84,16 @@ curl http://127.0.0.1:8000/tasks/
 ```
 
 Or just open `/docs` in a browser and try requests interactively.
+
+## Running the Streamlit app locally
+
+```bash
+streamlit run frontend/app.py
+```
+
+The UI will be live at `http://localhost:8501`. It has a sidebar with five
+sections — Dashboard (Home), Schedule & Tasks, Competitions, Finances, and
+Class Notes. Right now every page besides the Dashboard is a placeholder
+(titles/headers/containers only); the Dashboard has placeholder sections for
+Today's Agenda, Urgent Deadlines, and a Quick Financial Glance. None of this
+is wired to the FastAPI backend yet — that's Step 4.
