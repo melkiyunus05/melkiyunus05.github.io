@@ -1,26 +1,32 @@
 'use strict';
 
 // ---------- Konfigurasi ----------
-const TYPES = {
-  todo:       { label: 'To do',          color: 'var(--c-todo)',       checkable: true },
-  deadline:   { label: 'Deadline',       color: 'var(--c-deadline)',   checkable: true },
-  kuliah:     { label: 'Jadwal kuliah',  color: 'var(--c-kuliah)' },
-  asistensi:  { label: 'Asistensi',      color: 'var(--c-asistensi)' },
-  acara:      { label: 'Acara',          color: 'var(--c-acara)' },
-  pengumuman: { label: 'Pengumuman',     color: 'var(--c-pengumuman)' },
-  lainnya:    { label: 'Lainnya',        color: 'var(--c-lainnya)',    checkable: true },
-};
-const DEADLINE_SUBS = ['Tugas', 'Lomba', 'Presentasi', 'Asistensi', 'Rapat', 'Ujian', 'Lainnya'];
+// Kategori bawaan. Setelah pertama kali disimpan, kategori bisa diubah sendiri lewat menu "Kelola kategori".
+// checkable: punya checkbox selesai. weekly: otomatis "ulangi tiap minggu" saat dipilih. subs: pilihan jenis.
+const DEFAULT_CATS = [
+  { id: 'todo',       label: 'To do',         color: '#0ea5e9', checkable: true },
+  { id: 'deadline',   label: 'Deadline',      color: '#ef4444', checkable: true, subs: ['Tugas', 'Lomba', 'Presentasi', 'Asistensi', 'Rapat', 'Lainnya'] },
+  { id: 'ujian',      label: 'Ujian',         color: '#f97316', checkable: true, subs: ['Kuis', 'UTS', 'UAS', 'Praktikum'] },
+  { id: 'kuliah',     label: 'Jadwal kuliah', color: '#8b5cf6', weekly: true },
+  { id: 'asistensi',  label: 'Asistensi',     color: '#10b981', weekly: true },
+  { id: 'acara',      label: 'Acara',         color: '#eab308' },
+  { id: 'pengumuman', label: 'Pengumuman',    color: '#ec4899' },
+  { id: 'lainnya',    label: 'Lainnya',       color: '#64748b', checkable: true },
+];
+// Dipakai untuk item yang kategorinya sudah dihapus
+const UNKNOWN_CAT = { id: '', label: 'Tanpa kategori', color: '#94a3b8', checkable: true, weekly: false, subs: [] };
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // kalender mulai Senin
 const STORE_KEY = 'elio-planner-v1';
+const CATS_KEY = 'elio-planner-cats-v1';
 const THEME_KEY = 'elio-planner-theme';
 const UPCOMING_DAYS = 14;
 const CHIPS_PER_CELL = 3;
 
 // ---------- State ----------
 let items = load();
+let cats = loadCats();
 let view = startOfMonth(new Date());
 let selected = toKey(new Date());
 let filter = 'all';
@@ -48,6 +54,28 @@ function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(items)); }
   catch { toast('Gagal menyimpan. Penyimpanan browser penuh atau diblokir.'); }
 }
+function cleanCat(c) {
+  return {
+    id: String(c.id || uid()),
+    label: String(c.label || '').trim().slice(0, 40) || 'Kategori',
+    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#64748b',
+    checkable: !!c.checkable,
+    weekly: !!c.weekly,
+    subs: Array.isArray(c.subs) ? c.subs.map((x) => String(x).trim().slice(0, 30)).filter(Boolean) : [],
+  };
+}
+function loadCats() {
+  try {
+    const data = JSON.parse(localStorage.getItem(CATS_KEY));
+    if (Array.isArray(data) && data.length) return data.map(cleanCat);
+  } catch {}
+  return DEFAULT_CATS.map(cleanCat);
+}
+function saveCats() {
+  try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); }
+  catch { toast('Gagal menyimpan kategori.'); }
+}
+function cat(id) { return cats.find((c) => c.id === id) || UNKNOWN_CAT; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
 // ---------- Query item ----------
@@ -79,7 +107,7 @@ function setDone(it, k, val) {
     it.doneDates = [...s];
   } else it.done = val;
 }
-function labelOf(it) { return it.type === 'deadline' && it.sub ? `Deadline ${it.sub}` : TYPES[it.type].label; }
+function labelOf(it) { return it.sub ? `${cat(it.type).label} ${it.sub}` : cat(it.type).label; }
 
 // ---------- Elemen ----------
 const $ = (s) => document.querySelector(s);
@@ -95,8 +123,8 @@ function render() {
 }
 
 function renderLegend() {
-  $('#legend').innerHTML = Object.entries(TYPES)
-    .map(([, t]) => `<span><i style="background:${t.color}"></i>${t.label}</span>`).join('');
+  $('#legend').innerHTML = cats
+    .map((c) => `<span><i style="background:${c.color}"></i>${esc(c.label)}</span>`).join('');
   $('#weekdays').innerHTML = WEEK_ORDER.map((d) => `<div>${DAYS[d].slice(0, 3)}</div>`).join('');
 }
 
@@ -125,10 +153,10 @@ function renderCalendar() {
 
     let html = `<div class="num"><b>${d.getDate()}</b></div>`;
     html += list.slice(0, CHIPS_PER_CELL).map((it) =>
-      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${TYPES[it.type].color}">${it.time ? it.time + ' ' : ''}${esc(it.title)}</div>`
+      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}">${it.time ? it.time + ' ' : ''}${esc(it.title)}</div>`
     ).join('');
     if (list.length > CHIPS_PER_CELL) html += `<div class="more">+${list.length - CHIPS_PER_CELL} lagi</div>`;
-    html += `<div class="dots">${list.slice(0, 6).map((it) => `<i style="--c:${TYPES[it.type].color}"></i>`).join('')}</div>`;
+    html += `<div class="dots">${list.slice(0, 6).map((it) => `<i style="--c:${cat(it.type).color}"></i>`).join('')}</div>`;
     cell.innerHTML = html;
     frag.appendChild(cell);
   }
@@ -145,7 +173,7 @@ function renderDay() {
   if (filter !== 'all' && !types.includes(filter)) filter = 'all';
   $('#filters').innerHTML = types.length > 1
     ? [`<button data-f="all" class="${filter === 'all' ? 'on' : ''}">Semua (${all.length})</button>`,
-       ...types.map((t) => `<button data-f="${t}" class="${filter === t ? 'on' : ''}">${TYPES[t].label}</button>`)].join('')
+       ...types.map((t) => `<button data-f="${esc(t)}" class="${filter === t ? 'on' : ''}">${esc(cat(t).label)}</button>`)].join('')
     : '';
 
   const list = filter === 'all' ? all : all.filter((it) => it.type === filter);
@@ -157,10 +185,10 @@ function renderDay() {
 function renderUpcoming() {
   const today = toKey(new Date());
   const groups = [];
-  // Item yang lewat tanggal tapi belum dicentang (deadline dan to do)
+  // Item yang lewat tanggal tapi belum dicentang
   const overdue = [];
   for (const it of items) {
-    if (!it.weekly && TYPES[it.type].checkable && !it.done && it.date < today) overdue.push(it);
+    if (!it.weekly && cat(it.type).checkable && !it.done && it.date < today) overdue.push(it);
   }
   overdue.sort((a, b) => a.date.localeCompare(b.date));
   if (overdue.length) groups.push({ label: 'Terlewat', rows: overdue.map((it) => itemHtml(it, it.date, true)) });
@@ -168,7 +196,7 @@ function renderUpcoming() {
   for (let i = 0; i <= UPCOMING_DAYS; i++) {
     const k = toKey(addDays(fromKey(today), i));
     const rows = itemsOn(k)
-      .filter((it) => !(it.weekly && (it.type === 'kuliah' || it.type === 'asistensi'))) // jadwal rutin tidak perlu memenuhi daftar ini
+      .filter((it) => !(it.weekly && !cat(it.type).checkable)) // jadwal rutin (kuliah, asistensi) tidak perlu memenuhi daftar ini
       .filter((it) => !isDone(it, k))
       .map((it) => itemHtml(it, k, true));
     if (rows.length) groups.push({ label: i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : shortDate(k), rows });
@@ -180,7 +208,7 @@ function renderUpcoming() {
 }
 
 function itemHtml(it, k, showCountdown = false) {
-  const t = TYPES[it.type];
+  const t = cat(it.type);
   const done = isDone(it, k);
   const meta = [];
   meta.push(`<span class="badge" style="--c:${t.color}">${esc(labelOf(it))}</span>`);
@@ -213,17 +241,22 @@ function linkify(s) {
 let formType = 'todo';
 
 function buildTypePicker() {
-  $('#typePicker').innerHTML = Object.entries(TYPES).map(([key, t]) =>
-    `<button type="button" data-type="${key}" style="--c:${t.color}"><i></i>${t.label}</button>`).join('');
-  $('#subSelect').innerHTML = DEADLINE_SUBS.map((s) => `<option>${s}</option>`).join('');
+  $('#typePicker').innerHTML = cats.map((c) =>
+    `<button type="button" data-type="${esc(c.id)}" style="--c:${c.color}"><i></i>${esc(c.label)}</button>`).join('')
+    + `<button type="button" class="manage" data-manage>+ Kelola kategori</button>`;
 }
 
-function setFormType(type, autoRepeat) {
+function setFormType(type, autoRepeat, sub = '') {
   formType = type;
+  const c = cat(type);
   for (const b of $('#typePicker').children) b.classList.toggle('on', b.dataset.type === type);
-  $('#subWrap').hidden = type !== 'deadline';
-  // Jadwal kuliah dan asistensi biasanya rutin mingguan
-  if (autoRepeat) form.weekly.checked = type === 'kuliah' || type === 'asistensi';
+  // Pertahankan jenis lama walaupun sudah dihapus dari daftar kategori
+  const subs = sub && !c.subs.includes(sub) ? [...c.subs, sub] : c.subs;
+  $('#subWrap').hidden = !subs.length;
+  $('#subLabel').textContent = `Jenis ${c.label.toLowerCase()}`;
+  $('#subSelect').innerHTML = subs.map((x) => `<option>${esc(x)}</option>`).join('');
+  if (sub) form.sub.value = sub;
+  if (autoRepeat) form.weekly.checked = c.weekly;
   syncRepeat();
 }
 
@@ -243,11 +276,11 @@ function openForm(it = null, occurrence = selected) {
     form.notes.value = it.notes || '';
     form.weekly.checked = !!it.weekly;
     form.until.value = it.until || '';
-    form.sub.value = it.sub || DEADLINE_SUBS[0];
-    setFormType(it.type, false);
+    setFormType(it.type, false, it.sub);
   } else {
     form.date.value = selected;
-    setFormType(filter !== 'all' ? filter : formType, true);
+    const t = filter !== 'all' ? filter : formType;
+    setFormType(cats.some((c) => c.id === t) ? t : cats[0].id, true);
   }
   dialog.showModal();
   if (!it) form.title.focus();
@@ -260,7 +293,7 @@ form.addEventListener('submit', (e) => {
   const data = {
     title,
     type: formType,
-    sub: formType === 'deadline' ? form.sub.value : '',
+    sub: $('#subWrap').hidden ? '' : form.sub.value,
     date: form.date.value,
     time: form.time.value,
     endTime: form.endTime.value,
@@ -291,6 +324,7 @@ form.addEventListener('submit', (e) => {
 $('#cancelBtn').addEventListener('click', () => dialog.close());
 form.weekly.addEventListener('change', syncRepeat);
 $('#typePicker').addEventListener('click', (e) => {
+  if (e.target.closest('[data-manage]')) { openCatManager(); return; }
   const b = e.target.closest('button[data-type]');
   if (b) setFormType(b.dataset.type, !editing);
 });
@@ -395,13 +429,90 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 't') $('#todayBtn').click();
 });
 
+// ---------- Kelola kategori ----------
+const catDialog = $('#catDialog');
+
+function catRowHtml(c) {
+  return `<div class="cat-row" data-id="${esc(c.id)}">
+    <input type="color" class="cat-color" value="${c.color}" aria-label="Warna">
+    <input class="cat-name" value="${esc(c.label)}" maxlength="40" placeholder="Nama kategori" aria-label="Nama kategori">
+    <span class="cat-move">
+      <button type="button" class="icon-btn small" data-move="-1" aria-label="Naikkan">&#8593;</button>
+      <button type="button" class="icon-btn small" data-move="1" aria-label="Turunkan">&#8595;</button>
+      <button type="button" class="icon-btn small danger" data-del aria-label="Hapus kategori">&#215;</button>
+    </span>
+    <input class="cat-subs" value="${esc(c.subs.join(', '))}" maxlength="300" placeholder="Jenis (opsional), pisahkan dengan koma. Contoh: UTS, UAS, Kuis" aria-label="Jenis">
+    <div class="cat-flags">
+      <label class="check"><input type="checkbox" class="cat-check" ${c.checkable ? 'checked' : ''}> Bisa dicentang selesai</label>
+      <label class="check"><input type="checkbox" class="cat-weekly" ${c.weekly ? 'checked' : ''}> Otomatis ulangi tiap minggu</label>
+    </div>
+  </div>`;
+}
+
+function openCatManager() {
+  menu.hidden = true;
+  $('#catList').innerHTML = cats.map(catRowHtml).join('');
+  catDialog.showModal();
+}
+
+$('#catList').addEventListener('click', (e) => {
+  const row = e.target.closest('.cat-row');
+  if (!row) return;
+  const mv = e.target.closest('[data-move]');
+  if (mv) {
+    const sib = mv.dataset.move === '-1' ? row.previousElementSibling : row.nextElementSibling;
+    if (sib) mv.dataset.move === '-1' ? sib.before(row) : sib.after(row);
+    return;
+  }
+  if (e.target.closest('[data-del]')) row.remove();
+});
+
+$('#addCatBtn').addEventListener('click', () => {
+  const palette = ['#0ea5e9', '#ef4444', '#f97316', '#8b5cf6', '#10b981', '#eab308', '#ec4899', '#14b8a6', '#6366f1', '#84cc16'];
+  const c = cleanCat({ id: uid(), label: '', color: palette[$('#catList').children.length % palette.length], checkable: true });
+  $('#catList').insertAdjacentHTML('beforeend', catRowHtml(c));
+  const row = $('#catList').lastElementChild;
+  row.scrollIntoView({ block: 'nearest' });
+  row.querySelector('.cat-name').focus();
+});
+
+$('#catCancel').addEventListener('click', () => catDialog.close());
+
+$('#catForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const next = [...$('#catList').children].map((row) => cleanCat({
+    id: row.dataset.id,
+    label: row.querySelector('.cat-name').value,
+    color: row.querySelector('.cat-color').value,
+    checkable: row.querySelector('.cat-check').checked,
+    weekly: row.querySelector('.cat-weekly').checked,
+    subs: row.querySelector('.cat-subs').value.split(','),
+  }));
+  if (!next.length) { toast('Minimal harus ada satu kategori.'); return; }
+  const kept = new Set(next.map((c) => c.id));
+  const orphaned = items.filter((it) => cats.some((c) => c.id === it.type) && !kept.has(it.type));
+  if (orphaned.length && !confirm(`${orphaned.length} item ada di kategori yang dihapus. Item tetap tersimpan sebagai "Tanpa kategori" dan bisa kamu pindahkan lewat edit. Lanjut?`)) return;
+  cats = next;
+  saveCats();
+  buildTypePicker();
+  renderLegend();
+  render();
+  // Kalau dibuka dari form tambah/edit, segarkan pilihan kategori di form
+  if (dialog.open) {
+    const same = kept.has(formType);
+    setFormType(same ? formType : cats[0].id, false, same && !$('#subWrap').hidden ? form.sub.value : '');
+  }
+  catDialog.close();
+  toast('Kategori disimpan');
+});
+
 // ---------- Menu: backup & tema ----------
 const menu = $('#menu');
 $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 1, exported: new Date().toISOString(), items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -410,6 +521,7 @@ $('#exportBtn').addEventListener('click', () => {
   menu.hidden = true;
 });
 
+$('#catBtn').addEventListener('click', openCatManager);
 $('#importBtn').addEventListener('click', () => { $('#importFile').click(); menu.hidden = true; });
 $('#importFile').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -419,7 +531,15 @@ $('#importFile').addEventListener('change', async (e) => {
     const data = JSON.parse(await file.text());
     const incoming = Array.isArray(data) ? data : data.items;
     if (!Array.isArray(incoming)) throw new Error('format');
-    const valid = incoming.filter((it) => it && it.id && it.title && it.date && TYPES[it.type]);
+    if (Array.isArray(data.categories)) {
+      const byCat = new Map(cats.map((c) => [c.id, c]));
+      for (const c of data.categories) if (c && c.id) byCat.set(String(c.id), cleanCat(c));
+      cats = [...byCat.values()];
+      saveCats();
+      buildTypePicker();
+      renderLegend();
+    }
+    const valid = incoming.filter((it) => it && it.id && it.title && /^\d{4}-\d{2}-\d{2}$/.test(it.date));
     const byId = new Map(items.map((it) => [it.id, it]));
     for (const it of valid) byId.set(it.id, it);
     items = [...byId.values()];
