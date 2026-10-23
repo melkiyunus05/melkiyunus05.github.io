@@ -29,6 +29,7 @@
     <div class="top-actions">
       <button class="icon-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
       <div class="menu" id="menu" hidden>
+        <button id="catBtn">Kelola kategori</button>
         <button id="exportBtn">Ekspor backup (.json)</button>
         <button id="importBtn">Impor backup</button>
         <button id="themeBtn">Ganti tema terang/gelap</button>
@@ -82,7 +83,7 @@
         <div class="type-picker" id="typePicker"></div>
       </label>
 
-      <label id="subWrap">Jenis deadline
+      <label id="subWrap"><span id="subLabel">Jenis</span>
         <select name="sub" id="subSelect"></select>
       </label>
 
@@ -137,6 +138,20 @@
         <span class="spacer"></span>
         <button value="one" class="btn">Hanya tanggal ini</button>
         <button value="all" class="btn danger">Semua</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="catDialog" class="wide">
+    <form method="dialog" id="catForm">
+      <h2>Kelola kategori</h2>
+      <p>Ubah nama, warna, dan urutan kategori. Kolom "jenis" bersifat opsional, misalnya untuk Ujian: UTS, UAS, Kuis.</p>
+      <div class="cat-list" id="catList"></div>
+      <button type="button" class="btn" id="addCatBtn">+ Kategori baru</button>
+      <div class="form-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="catCancel">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
       </div>
     </form>
   </dialog>

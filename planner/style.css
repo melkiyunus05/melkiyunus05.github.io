@@ -11,14 +11,6 @@
   --today: #eef0ff;
   --selected: #4f46e5;
   --shadow: 0 1px 3px rgba(20, 20, 40, .08), 0 6px 20px rgba(20, 20, 40, .05);
-
-  --c-todo: #0ea5e9;
-  --c-deadline: #ef4444;
-  --c-kuliah: #8b5cf6;
-  --c-asistensi: #10b981;
-  --c-acara: #f59e0b;
-  --c-pengumuman: #ec4899;
-  --c-lainnya: #64748b;
 }
 
 :root[data-theme="dark"] {
@@ -330,6 +322,27 @@ dialog textarea { resize: vertical; }
 .type-picker button i { width: 9px; height: 9px; border-radius: 99px; background: var(--c); }
 .type-picker button.on { background: var(--c); border-color: var(--c); color: #fff; }
 .type-picker button.on i { background: #fff; }
+.type-picker button.manage { border-style: dashed; color: var(--muted); }
+
+/* ---------- Kelola kategori ---------- */
+dialog.wide { width: min(640px, calc(100vw - 24px)); }
+.cat-list { display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto; padding-right: 2px; }
+.cat-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.cat-row .cat-subs, .cat-row .cat-flags { grid-column: 1 / -1; }
+.cat-row input.cat-color { width: 44px; height: 40px; padding: 2px; cursor: pointer; }
+.cat-move { display: flex; gap: 4px; }
+.icon-btn.small { width: 32px; height: 32px; font-size: 1rem; }
+.icon-btn.danger { color: var(--danger); }
+.cat-flags { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.cat-flags label.check { font-size: .85rem; flex: none; }
 
 .form-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
