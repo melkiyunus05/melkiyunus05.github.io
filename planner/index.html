@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Elio Planner</title>
+  <meta name="description" content="Kalender, to do list, deadline, dan jadwal kuliah dalam satu aplikasi ringan.">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Planner">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" width="28" height="28">
+      <span>Elio Planner</span>
+    </div>
+    <div class="month-nav">
+      <button class="icon-btn" id="prevMonth" aria-label="Bulan sebelumnya">&#8249;</button>
+      <h1 id="monthLabel">Bulan</h1>
+      <button class="icon-btn" id="nextMonth" aria-label="Bulan berikutnya">&#8250;</button>
+      <button class="btn ghost" id="todayBtn">Hari ini</button>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
+      <div class="menu" id="menu" hidden>
+        <button id="exportBtn">Ekspor backup (.json)</button>
+        <button id="importBtn">Impor backup</button>
+        <button id="themeBtn">Ganti tema terang/gelap</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="calendar-card">
+      <div class="legend" id="legend"></div>
+      <div class="weekdays" id="weekdays"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <aside class="side">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="day" role="tab">Tanggal terpilih</button>
+        <button class="tab" data-tab="upcoming" role="tab">Mendatang</button>
+      </div>
+
+      <div class="panel" id="dayPanel">
+        <div class="panel-head">
+          <div>
+            <div class="day-title" id="dayTitle"></div>
+            <div class="day-sub" id="daySub"></div>
+          </div>
+          <button class="btn primary" id="addBtn">+ Tambah</button>
+        </div>
+        <div class="filters" id="filters"></div>
+        <ul class="items" id="dayItems"></ul>
+      </div>
+
+      <div class="panel" id="upcomingPanel" hidden>
+        <div class="panel-head">
+          <div>
+            <div class="day-title">14 hari ke depan</div>
+            <div class="day-sub">Deadline, pengumuman, acara, dan to do yang belum selesai</div>
+          </div>
+        </div>
+        <ul class="items" id="upcomingItems"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="itemDialog">
+    <form method="dialog" id="itemForm">
+      <h2 id="formTitle">Tambah item</h2>
+
+      <label>Kategori
+        <div class="type-picker" id="typePicker"></div>
+      </label>
+
+      <label id="subWrap">Jenis deadline
+        <select name="sub" id="subSelect"></select>
+      </label>
+
+      <label>Judul
+        <input name="title" required maxlength="120" placeholder="mis. Laporan Praktikum Fisdas 2">
+      </label>
+
+      <div class="row">
+        <label>Tanggal
+          <input type="date" name="date" required>
+        </label>
+        <label>Jam mulai
+          <input type="time" name="time">
+        </label>
+        <label>Jam selesai
+          <input type="time" name="endTime">
+        </label>
+      </div>
+
+      <label>Tempat / link
+        <input name="place" maxlength="200" placeholder="mis. Gedung B 201 / link Zoom">
+      </label>
+
+      <div class="row repeat-row">
+        <label class="check">
+          <input type="checkbox" name="weekly"> Ulangi tiap minggu
+        </label>
+        <label id="untilWrap">Sampai tanggal
+          <input type="date" name="until">
+        </label>
+      </div>
+
+      <label>Catatan
+        <textarea name="notes" rows="3" maxlength="2000" placeholder="Detail, syarat, link pengumpulan, dll."></textarea>
+      </label>
+
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="deleteBtn" hidden>Hapus</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="cancelBtn">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <form method="dialog">
+      <h2>Hapus item berulang</h2>
+      <p>Item ini berulang tiap minggu. Mau hapus yang mana?</p>
+      <div class="form-actions">
+        <button value="cancel" class="btn ghost">Batal</button>
+        <span class="spacer"></span>
+        <button value="one" class="btn">Hanya tanggal ini</button>
+        <button value="all" class="btn danger">Semua</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
