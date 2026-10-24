@@ -21,6 +21,8 @@ const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // kalender mulai Senin
 const STORE_KEY = 'elio-planner-v1';
 const CATS_KEY = 'elio-planner-cats-v1';
 const THEME_KEY = 'elio-planner-theme';
+const MODE_KEY = 'elio-planner-mode';
+const HOUR_PX = 48; // tinggi satu jam di tampilan mingguan
 const UPCOMING_DAYS = 14;
 const CHIPS_PER_CELL = 3;
 
@@ -31,6 +33,9 @@ let view = startOfMonth(new Date());
 let selected = toKey(new Date());
 let filter = 'all';
 let editing = null; // { id, occurrence } saat edit
+let mode = readPref(MODE_KEY, 'day'); // 'day' | 'week' | 'month'
+if (!['day', 'week', 'month'].includes(mode)) mode = 'day';
+let sideTab = 'day';
 
 // ---------- Util tanggal ----------
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -40,9 +45,19 @@ function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function diffDays(a, b) { return Math.round((fromKey(b) - fromKey(a)) / 86400000); }
 function prettyDate(k) { const d = fromKey(k); return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function weekStart(k) { const d = fromKey(k); return addDays(d, -((d.getDay() + 6) % 7)); }
+function toMin(t) { return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)); }
+function nowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function endMin(it) { return it.endTime && it.endTime > it.time ? toMin(it.endTime) : toMin(it.time) + 60; }
+function relDay(k) {
+  const n = diffDays(toKey(new Date()), k);
+  return n === 0 ? 'Hari ini' : n === 1 ? 'Besok' : n === -1 ? 'Kemarin' : n > 0 ? `${n} hari lagi` : `${-n} hari yang lalu`;
+}
 function shortDate(k) { const d = fromKey(k); return `${DAYS[d.getDay()].slice(0, 3)}, ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`; }
 
 // ---------- Penyimpanan ----------
+function readPref(key, fallback) { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } }
+function writePref(key, val) { try { localStorage.setItem(key, val); } catch {} }
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -117,9 +132,52 @@ const form = $('#itemForm');
 
 // ---------- Render ----------
 function render() {
-  renderCalendar();
+  renderHeader();
+  if (mode === 'month') renderCalendar();
+  else if (mode === 'week') renderWeek();
+  else renderDayView();
   renderDay();
   renderUpcoming();
+}
+
+function renderHeader() {
+  let label;
+  if (mode === 'month') label = `${MONTHS[view.getMonth()]} ${view.getFullYear()}`;
+  else if (mode === 'week') {
+    const a = weekStart(selected), b = addDays(a, 6);
+    label = a.getMonth() === b.getMonth()
+      ? `${a.getDate()} - ${b.getDate()} ${MONTHS[b.getMonth()].slice(0, 3)} ${b.getFullYear()}`
+      : `${a.getDate()} ${MONTHS[a.getMonth()].slice(0, 3)} - ${b.getDate()} ${MONTHS[b.getMonth()].slice(0, 3)} ${b.getFullYear()}`;
+  } else label = `${shortDate(selected)} ${fromKey(selected).getFullYear()}`;
+  $('#periodLabel').textContent = label;
+}
+
+function applyMode() {
+  $('#dayView').hidden = mode !== 'day';
+  $('#weekView').hidden = mode !== 'week';
+  $('#monthView').hidden = mode !== 'month';
+  for (const b of $('#modeSeg').children) b.classList.toggle('on', b.dataset.mode === mode);
+  // Di tampilan Hari, isi tanggal sudah tampil di tengah, jadi panel samping cukup menampilkan "Mendatang"
+  $('.tabs').hidden = mode === 'day';
+  if (mode === 'day') { $('#dayPanel').hidden = true; $('#upcomingPanel').hidden = false; }
+  else showTab(sideTab);
+}
+
+function setMode(m) {
+  mode = m;
+  writePref(MODE_KEY, m);
+  view = startOfMonth(fromKey(selected));
+  applyMode();
+  render();
+}
+
+function nav(dir) {
+  if (mode === 'month') view = new Date(view.getFullYear(), view.getMonth() + dir, 1);
+  else {
+    selected = toKey(addDays(fromKey(selected), dir * (mode === 'week' ? 7 : 1)));
+    view = startOfMonth(fromKey(selected));
+  }
+  render();
 }
 
 function renderLegend() {
@@ -129,7 +187,6 @@ function renderLegend() {
 }
 
 function renderCalendar() {
-  $('#monthLabel').textContent = `${MONTHS[view.getMonth()]} ${view.getFullYear()}`;
   const offset = (view.getDay() + 6) % 7; // jumlah hari sebelum Senin pertama
   const start = addDays(view, -offset);
   const today = toKey(new Date());
@@ -165,8 +222,7 @@ function renderCalendar() {
 
 function renderDay() {
   $('#dayTitle').textContent = prettyDate(selected);
-  const n = diffDays(toKey(new Date()), selected);
-  $('#daySub').textContent = n === 0 ? 'Hari ini' : n === 1 ? 'Besok' : n === -1 ? 'Kemarin' : n > 0 ? `${n} hari lagi` : `${-n} hari yang lalu`;
+  $('#daySub').textContent = relDay(selected);
 
   const all = itemsOn(selected);
   const types = [...new Set(all.map((it) => it.type))];
@@ -182,6 +238,110 @@ function renderDay() {
     : `<li class="empty">Belum ada apa pun di tanggal ini.<br>Tekan <b>+ Tambah</b> untuk mulai.</li>`;
 }
 
+function renderDayView() {
+  const k = selected;
+  const today = toKey(new Date());
+  $('#dvTitle').textContent = prettyDate(k);
+  $('#dvSub').textContent = relDay(k);
+  const list = itemsOn(k);
+  const timed = list.filter((it) => it.time);
+  const untimed = list.filter((it) => !it.time);
+
+  // Tandai jadwal yang sedang berlangsung dan berikutnya (hanya untuk hari ini)
+  const status = new Map();
+  if (k === today) {
+    const now = nowMin();
+    let nextFound = false;
+    for (const it of timed) {
+      if (toMin(it.time) <= now && now < endMin(it)) status.set(it.id, 'now');
+      else if (!nextFound && toMin(it.time) > now) { status.set(it.id, 'next'); nextFound = true; }
+    }
+  }
+
+  const section = (title, rows, empty) => `<h3 class="sec-title">${title}</h3>` +
+    (rows.length ? `<ul class="items">${rows.join('')}</ul>` : `<p class="sec-empty">${empty}</p>`);
+  $('#dvBody').innerHTML =
+    section('Jadwal', timed.map((it) => itemHtml(it, k, { status: status.get(it.id) })), 'Tidak ada jadwal berjam di hari ini.') +
+    section('Tugas dan lainnya', untimed.map((it) => itemHtml(it, k)), 'Tidak ada tugas tanpa jam di hari ini.');
+}
+
+function renderWeek() {
+  const start = weekStart(selected);
+  const keys = Array.from({ length: 7 }, (_, i) => toKey(addDays(start, i)));
+  const today = toKey(new Date());
+  const lists = keys.map((k) => itemsOn(k));
+
+  // Rentang jam menyesuaikan isi, minimal 07.00 sampai 18.00
+  let minH = 7, maxH = 18;
+  for (const l of lists) for (const it of l) if (it.time) {
+    minH = Math.min(minH, Math.floor(toMin(it.time) / 60));
+    maxH = Math.max(maxH, Math.ceil(Math.min(endMin(it), 1440) / 60));
+  }
+  const hours = maxH - minH;
+
+  let head = '<div class="wk-corner"></div>';
+  let allday = '<div class="wk-label">Tanpa jam</div>';
+  let cols = '';
+  keys.forEach((k, i) => {
+    const d = fromKey(k);
+    const cls = [k === today ? 'today' : '', k === selected ? 'selected' : '', d.getDay() === 0 ? 'sunday' : ''].join(' ');
+    head += `<button type="button" class="wk-day ${cls}" data-day="${k}"><span>${DAYS[d.getDay()].slice(0, 3)}</span><b>${d.getDate()}</b></button>`;
+    allday += `<div class="wk-allday ${cls}">${lists[i].filter((it) => !it.time).map((it) =>
+      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}" data-id="${it.id}" data-key="${k}">${esc(it.title)}</div>`).join('')}</div>`;
+    cols += `<div class="wk-col ${cls}" data-key="${k}">${weekEvents(lists[i].filter((it) => it.time), k, minH)}`;
+    if (k === today && nowMin() >= minH * 60 && nowMin() < maxH * 60) {
+      cols += `<div class="wk-now" style="top:${(nowMin() - minH * 60) / 60 * HOUR_PX}px"></div>`;
+    }
+    cols += '</div>';
+  });
+  let times = '';
+  for (let h = minH; h < maxH; h++) times += `<div class="wk-time">${pad(h)}.00</div>`;
+
+  $('#weekBody').innerHTML = `<div class="wk" style="--hours:${hours};--hour:${HOUR_PX}px" data-min="${minH}">
+    ${head}${allday}<div class="wk-times">${times}</div>${cols}</div>`;
+
+  // Di layar sempit, geser otomatis supaya kolom tanggal terpilih terlihat
+  const sc = $('#weekBody');
+  if (sc.scrollWidth > sc.clientWidth) {
+    const col = sc.querySelector('.wk-day.selected');
+    if (col) sc.scrollLeft = col.offsetLeft - 52;
+  }
+}
+
+// Susun event yang bertumpuk jamnya menjadi beberapa lajur berdampingan
+function weekEvents(list, k, minH) {
+  const evs = list.map((it) => ({ it, s: toMin(it.time), e: Math.max(endMin(it), toMin(it.time) + 30) }))
+    .sort((a, b) => a.s - b.s || a.e - b.e);
+  const out = [];
+  let cluster = [], clusterEnd = -1;
+  const flush = () => {
+    const lanes = [];
+    for (const ev of cluster) {
+      let lane = lanes.findIndex((end) => end <= ev.s);
+      if (lane === -1) { lane = lanes.length; lanes.push(0); }
+      lanes[lane] = ev.e;
+      ev.lane = lane;
+    }
+    for (const ev of cluster) ev.lanes = lanes.length;
+    out.push(...cluster);
+    cluster = [];
+  };
+  for (const ev of evs) {
+    if (ev.s >= clusterEnd && cluster.length) flush();
+    cluster.push(ev);
+    clusterEnd = Math.max(clusterEnd, ev.e);
+  }
+  if (cluster.length) flush();
+
+  return out.map(({ it, s, e, lane, lanes }) => {
+    const top = (s - minH * 60) / 60 * HOUR_PX;
+    const height = (e - s) / 60 * HOUR_PX - 2;
+    return `<div class="wk-ev${isDone(it, k) ? ' done' : ''}" data-id="${it.id}" data-key="${k}"
+      style="--c:${cat(it.type).color};top:${top}px;height:${height}px;left:calc(${lane / lanes * 100}% + 2px);width:calc(${100 / lanes}% - 4px)">
+      <b>${esc(it.title)}</b><span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}${it.place ? ' · ' + esc(it.place) : ''}</span></div>`;
+  }).join('');
+}
+
 function renderUpcoming() {
   const today = toKey(new Date());
   const groups = [];
@@ -191,14 +351,14 @@ function renderUpcoming() {
     if (!it.weekly && cat(it.type).checkable && !it.done && it.date < today) overdue.push(it);
   }
   overdue.sort((a, b) => a.date.localeCompare(b.date));
-  if (overdue.length) groups.push({ label: 'Terlewat', rows: overdue.map((it) => itemHtml(it, it.date, true)) });
+  if (overdue.length) groups.push({ label: 'Terlewat', rows: overdue.map((it) => itemHtml(it, it.date, { countdown: true })) });
 
   for (let i = 0; i <= UPCOMING_DAYS; i++) {
     const k = toKey(addDays(fromKey(today), i));
     const rows = itemsOn(k)
       .filter((it) => !(it.weekly && !cat(it.type).checkable)) // jadwal rutin (kuliah, asistensi) tidak perlu memenuhi daftar ini
       .filter((it) => !isDone(it, k))
-      .map((it) => itemHtml(it, k, true));
+      .map((it) => itemHtml(it, k, { countdown: true }));
     if (rows.length) groups.push({ label: i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : shortDate(k), rows });
   }
 
@@ -207,7 +367,8 @@ function renderUpcoming() {
     : `<li class="empty">Tidak ada yang mendesak dalam ${UPCOMING_DAYS} hari ke depan. Santai dulu.</li>`;
 }
 
-function itemHtml(it, k, showCountdown = false) {
+function itemHtml(it, k, opts = {}) {
+  const showCountdown = !!opts.countdown;
   const t = cat(it.type);
   const done = isDone(it, k);
   const meta = [];
@@ -215,12 +376,14 @@ function itemHtml(it, k, showCountdown = false) {
   if (it.time) meta.push(`<span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}</span>`);
   if (it.place) meta.push(`<span>${esc(it.place)}</span>`);
   if (it.weekly) meta.push(`<span>Tiap ${DAYS[fromKey(it.date).getDay()]}</span>`);
+  if (opts.status === 'now') meta.unshift('<span class="status now">Sedang berlangsung</span>');
+  if (opts.status === 'next') meta.unshift('<span class="status next">Berikutnya</span>');
   if (showCountdown) {
     const n = diffDays(toKey(new Date()), k);
     const txt = n < 0 ? `Lewat ${-n} hari` : n === 0 ? 'Hari ini' : `H-${n}`;
     meta.push(`<span class="countdown${n > 3 ? ' far' : ''}">${txt}</span>`);
   }
-  return `<li class="item${done ? ' done' : ''}" style="--c:${t.color}" data-id="${it.id}" data-key="${k}">
+  return `<li class="item${done ? ' done' : ''}${opts.status ? ' ' + opts.status : ''}" style="--c:${t.color}" data-id="${it.id}" data-key="${k}">
     ${t.checkable ? `<input type="checkbox" ${done ? 'checked' : ''} aria-label="Tandai selesai">` : ''}
     <div class="body">
       <div class="title">${esc(it.title)}</div>
@@ -262,7 +425,7 @@ function setFormType(type, autoRepeat, sub = '') {
 
 function syncRepeat() { $('#untilWrap').style.visibility = form.weekly.checked ? 'visible' : 'hidden'; }
 
-function openForm(it = null, occurrence = selected) {
+function openForm(it = null, occurrence = selected, preset = {}) {
   form.reset();
   editing = it ? { id: it.id, occurrence } : null;
   $('#formTitle').textContent = it ? 'Edit item' : 'Tambah item';
@@ -278,7 +441,8 @@ function openForm(it = null, occurrence = selected) {
     form.until.value = it.until || '';
     setFormType(it.type, false, it.sub);
   } else {
-    form.date.value = selected;
+    form.date.value = preset.date || selected;
+    form.time.value = preset.time || '';
     const t = filter !== 'all' ? filter : formType;
     setFormType(cats.some((c) => c.id === t) ? t : cats[0].id, true);
   }
@@ -364,6 +528,7 @@ grid.addEventListener('click', (e) => {
   selected = k;
   const d = fromKey(k);
   if (d.getMonth() !== view.getMonth()) view = startOfMonth(d);
+  sideTab = 'day';
   showTab('day');
   render();
   if (window.matchMedia('(max-width: 1000px)').matches) $('.side').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -387,6 +552,35 @@ function onListClick(e) {
   openForm(it, li.dataset.key);
 }
 $('#dayItems').addEventListener('click', onListClick);
+$('#dvBody').addEventListener('click', onListClick);
+
+$('#weekBody').addEventListener('click', (e) => {
+  const day = e.target.closest('[data-day]');
+  if (day) { selected = day.dataset.day; setMode('day'); return; }
+  const ev = e.target.closest('[data-id]');
+  if (ev) {
+    const it = items.find((x) => x.id === ev.dataset.id);
+    if (it) openForm(it, ev.dataset.key);
+    return;
+  }
+  const col = e.target.closest('.wk-col');
+  if (col) {
+    // Ubah posisi klik menjadi jam, dibulatkan ke 30 menit
+    const minH = Number(col.parentElement.dataset.min);
+    const y = e.clientY - col.getBoundingClientRect().top;
+    const m = Math.min(minH * 60 + Math.floor(y / HOUR_PX * 2) * 30, 23 * 60 + 30);
+    selected = col.dataset.key;
+    openForm(null, selected, { date: col.dataset.key, time: `${pad(Math.floor(m / 60))}:${pad(m % 60)}` });
+    return;
+  }
+  const allday = e.target.closest('.wk-allday');
+  if (allday) {
+    const i = [...allday.parentElement.querySelectorAll('.wk-allday')].indexOf(allday);
+    const k = toKey(addDays(weekStart(selected), i));
+    selected = k;
+    openForm(null, k, { date: k });
+  }
+});
 $('#upcomingItems').addEventListener('click', onListClick);
 
 $('#filters').addEventListener('click', (e) => {
@@ -396,9 +590,10 @@ $('#filters').addEventListener('click', (e) => {
   renderDay();
 });
 
-$('#addBtn').addEventListener('click', () => openForm());
-$('#prevMonth').addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); renderCalendar(); });
-$('#nextMonth').addEventListener('click', () => { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCalendar(); });
+for (const b of document.querySelectorAll('[data-add]')) b.addEventListener('click', () => openForm());
+$('#prevBtn').addEventListener('click', () => nav(-1));
+$('#nextBtn').addEventListener('click', () => nav(1));
+$('#modeSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
 $('#todayBtn').addEventListener('click', () => { selected = toKey(new Date()); view = startOfMonth(new Date()); render(); });
 
 function showTab(name) {
@@ -406,27 +601,32 @@ function showTab(name) {
   $('#dayPanel').hidden = name !== 'day';
   $('#upcomingPanel').hidden = name !== 'upcoming';
 }
-for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => showTab(t.dataset.tab));
+for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => { sideTab = t.dataset.tab; showTab(sideTab); });
 
-// Swipe kiri/kanan di tablet untuk ganti bulan
-let touchX = null;
-grid.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
-grid.addEventListener('touchend', (e) => {
-  if (touchX === null) return;
-  const dx = e.changedTouches[0].clientX - touchX;
-  touchX = null;
-  if (Math.abs(dx) < 60) return;
-  view = new Date(view.getFullYear(), view.getMonth() + (dx < 0 ? 1 : -1), 1);
-  renderCalendar();
-});
+// Swipe kiri/kanan di tablet untuk pindah bulan atau hari
+let touchX = null, touchY = null;
+for (const el of [grid, $('#dayView')]) {
+  el.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    const dy = e.changedTouches[0].clientY - touchY;
+    touchX = null;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+    nav(dx < 0 ? 1 : -1);
+  });
+}
 
 // Shortcut keyboard di laptop
 document.addEventListener('keydown', (e) => {
   if (dialog.open || e.target.matches('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); openForm(); }
-  else if (e.key === 'ArrowLeft') $('#prevMonth').click();
-  else if (e.key === 'ArrowRight') $('#nextMonth').click();
+  else if (e.key === 'ArrowLeft') nav(-1);
+  else if (e.key === 'ArrowRight') nav(1);
   else if (e.key === 't') $('#todayBtn').click();
+  else if (e.key === 'h') setMode('day');
+  else if (e.key === 'm') setMode('week');
+  else if (e.key === 'b') setMode('month');
 });
 
 // ---------- Kelola kategori ----------
@@ -579,6 +779,7 @@ function toast(msg) {
 try { applyTheme(localStorage.getItem(THEME_KEY)); } catch {}
 buildTypePicker();
 renderLegend();
+applyMode();
 render();
 
 // Ganti hari otomatis kalau aplikasi dibiarkan terbuka melewati tengah malam

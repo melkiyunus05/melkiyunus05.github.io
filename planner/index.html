@@ -21,10 +21,15 @@
       <span>Elio Planner</span>
     </div>
     <div class="month-nav">
-      <button class="icon-btn" id="prevMonth" aria-label="Bulan sebelumnya">&#8249;</button>
-      <h1 id="monthLabel">Bulan</h1>
-      <button class="icon-btn" id="nextMonth" aria-label="Bulan berikutnya">&#8250;</button>
+      <button class="icon-btn" id="prevBtn" aria-label="Sebelumnya">&#8249;</button>
+      <h1 id="periodLabel">Bulan</h1>
+      <button class="icon-btn" id="nextBtn" aria-label="Berikutnya">&#8250;</button>
       <button class="btn ghost" id="todayBtn">Hari ini</button>
+    </div>
+    <div class="seg" id="modeSeg" role="tablist" aria-label="Tampilan">
+      <button data-mode="day">Hari</button>
+      <button data-mode="week">Minggu</button>
+      <button data-mode="month">Bulan</button>
     </div>
     <div class="top-actions">
       <button class="icon-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
@@ -39,7 +44,23 @@
   </header>
 
   <main class="layout">
-    <section class="calendar-card">
+    <section class="card day-view" id="dayView" hidden>
+      <div class="panel-head">
+        <div>
+          <div class="day-title big" id="dvTitle"></div>
+          <div class="day-sub" id="dvSub"></div>
+        </div>
+        <button class="btn primary" data-add>+ Tambah</button>
+      </div>
+      <div id="dvBody"></div>
+    </section>
+
+    <section class="card week-view" id="weekView" hidden>
+      <div class="wk-scroll" id="weekBody"></div>
+      <div class="hint">Klik slot kosong untuk menambah item di jam itu. Klik nama hari untuk membuka tampilan Hari.</div>
+    </section>
+
+    <section class="card calendar-card" id="monthView">
       <div class="legend" id="legend"></div>
       <div class="weekdays" id="weekdays"></div>
       <div class="grid" id="grid"></div>
@@ -57,7 +78,7 @@
             <div class="day-title" id="dayTitle"></div>
             <div class="day-sub" id="daySub"></div>
           </div>
-          <button class="btn primary" id="addBtn">+ Tambah</button>
+          <button class="btn primary" id="addBtn" data-add>+ Tambah</button>
         </div>
         <div class="filters" id="filters"></div>
         <ul class="items" id="dayItems"></ul>
