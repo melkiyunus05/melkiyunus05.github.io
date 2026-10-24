@@ -46,6 +46,8 @@
 }
 
 * { box-sizing: border-box; }
+/* Atribut hidden harus selalu menang atas display dari class lain */
+[hidden] { display: none !important; }
 
 html, body { margin: 0; }
 
@@ -79,7 +81,29 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .month-nav { display: flex; align-items: center; gap: 6px; margin: 0 auto; }
 .month-nav h1 { font-size: 1.15rem; margin: 0 6px; min-width: 150px; text-align: center; }
 
-.top-actions { position: relative; }
+.top-actions { position: relative; margin-left: auto; }
+
+/* ---------- Navigasi utama ---------- */
+.mainnav { display: flex; gap: 4px; }
+.mainnav button {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 0; background: none; cursor: pointer;
+  padding: 8px 12px; border-radius: 10px;
+  font-weight: 600; font-size: .92rem; color: var(--muted);
+}
+.mainnav button:hover { background: var(--surface-2); }
+.mainnav button.on { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.mainnav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* Navigasi bulan dan pilihan tampilan hanya untuk halaman Kalender */
+body:not([data-page="cal"]) .month-nav, body:not([data-page="cal"]) .seg { display: none; }
+
+/* ---------- Halaman (Matkul, Lomba) ---------- */
+.page { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.page[hidden], .layout[hidden] { display: none; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.page-head h2 { margin: 0; font-size: 1.35rem; }
+.muted { color: var(--muted); }
+.page-sub { margin: 4px 0 0; color: var(--muted); font-size: .88rem; }
 
 .icon-btn {
   width: 36px; height: 36px;
@@ -481,6 +505,109 @@ dialog label.important-check { font-weight: 600; }
 .form-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
 
+/* ---------- Mata kuliah ---------- */
+.card.pad { padding: 16px 18px; }
+.card h3 { margin: 0 0 10px; font-size: 1rem; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.sec-head h3 { margin: 0; }
+.empty-state { padding: 22px 24px; max-width: 640px; }
+.empty-state h3 { font-size: 1.1rem; }
+.empty-state p, .empty-state li { color: var(--muted); line-height: 1.6; }
+.empty-state ul { margin: 0 0 16px; padding-left: 20px; }
+
+.course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+.course-card {
+  text-align: left; cursor: pointer; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-top: 5px solid var(--c);
+  border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.course-card:hover { border-color: var(--c); }
+.cc-head { display: flex; flex-direction: column; gap: 2px; }
+.cc-head b { font-size: 1.05rem; }
+.cc-head span { font-size: .8rem; }
+.cc-row { display: flex; gap: 10px; font-size: .86rem; align-items: baseline; }
+.cc-label { width: 46px; flex-shrink: 0; font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+.cc-grade { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--border); font-size: .88rem; display: flex; align-items: center; gap: 6px; }
+.grade-letter {
+  display: inline-grid; place-items: center; min-width: 34px; height: 26px; padding: 0 6px;
+  border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 800;
+}
+.archive { margin-top: 22px; }
+.archive summary, .done-list summary { cursor: pointer; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+.done-list { margin-top: 12px; }
+
+.course-hero { border-left: 5px solid var(--c); padding: 2px 0 2px 14px; margin-bottom: 16px; }
+.course-hero h2 { margin: 0 0 4px; font-size: 1.4rem; }
+.course-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.course-col { display: flex; flex-direction: column; gap: 16px; }
+.course-tag {
+  font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--cc); color: var(--cc);
+}
+.inline-field { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+.inline-field select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
+
+.grade-wrap { overflow-x: auto; }
+.grade-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.grade-table th { text-align: left; font-size: .72rem; text-transform: uppercase; color: var(--muted); padding: 0 4px 6px; font-weight: 700; }
+.grade-table td { padding: 3px 4px; }
+.grade-table td:nth-child(2), .grade-table td:nth-child(3) { width: 92px; }
+.grade-table td:last-child { width: 36px; }
+.grade-table input, .link-add input, .course-notes {
+  width: 100%; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: .92rem; min-width: 0;
+}
+.grade-table input:focus, .link-add input:focus, .course-notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.grade-summary { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: .9rem; line-height: 1.5; }
+.grade-summary p { margin: 0 0 8px; }
+.grade-big { display: flex; align-items: center; gap: 8px; font-weight: 600; flex-wrap: wrap; }
+.grade-summary .need { color: var(--accent); font-size: 1.05rem; }
+.grade-summary .warn { color: var(--danger); }
+.grade-summary .ok { color: #10b981; }
+.need-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .8rem; }
+.need-chip { padding: 2px 9px; border-radius: 999px; background: var(--surface-2); font-weight: 600; }
+.need-chip.on { background: var(--accent); color: var(--accent-text); }
+
+.link-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.link-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.link-list a { color: var(--accent); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-add { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 6px; }
+.course-notes { resize: vertical; font-family: inherit; line-height: 1.5; }
+.form-note { font-size: .8rem; color: var(--muted); margin: 0; line-height: 1.5; }
+.color-field { flex: 0 0 72px !important; }
+dialog .color-field input { height: 40px; padding: 2px !important; cursor: pointer; }
+
+/* ---------- Lomba ---------- */
+.board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.board-col { background: var(--surface-2); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 120px; }
+.col-head { display: flex; align-items: center; justify-content: space-between; }
+.col-count { font-size: .78rem; font-weight: 700; color: var(--muted); background: var(--surface); border-radius: 999px; padding: 1px 9px; }
+.col-hint { font-size: .75rem; color: var(--muted); margin-top: -6px; }
+.col-empty { font-size: .82rem; color: var(--muted); text-align: center; padding: 18px 0; border: 1px dashed var(--border); border-radius: 12px; }
+.comp-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px;
+  display: flex; flex-direction: column; gap: 6px; cursor: pointer; box-shadow: var(--shadow);
+}
+.comp-card:hover, .comp-card:focus-visible { border-color: var(--accent); outline: none; }
+.cp-title { font-weight: 700; line-height: 1.3; }
+.cp-meta { font-size: .78rem; color: var(--muted); }
+.cp-next { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: .8rem; }
+.cp-row { font-size: .78rem; }
+.cp-result {
+  align-self: flex-start; font-size: .8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px;
+  background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309;
+}
+:root[data-theme="dark"] .cp-result { color: #fbbf24; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cp-result { color: #fbbf24; } }
+.cp-move { display: flex; justify-content: space-between; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--border); }
+.cp-move .btn.small { padding: 4px 9px; font-size: .75rem; }
+
+.date-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.date-rows li { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, .8fr) 32px; gap: 6px; align-items: center; }
+.date-rows input, .date-rows select { padding: 7px 8px !important; font-size: .88rem !important; }
+.field-hint.block { display: block; margin-top: 6px; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
@@ -494,6 +621,19 @@ dialog label.important-check { font-weight: 600; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
+  .course-layout { grid-template-columns: minmax(0, 1fr); }
+  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Tablet dan HP: navigasi utama pindah ke bawah seperti aplikasi pada umumnya */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .mainnav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; gap: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
+  }
+  .mainnav button { flex: 1; flex-direction: column; gap: 2px; padding: 6px; font-size: .72rem; }
+  .mainnav button.on { background: none; }
+  .mainnav svg { width: 22px; height: 22px; }
+  .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; max-height: none; }
 }
@@ -501,7 +641,17 @@ dialog label.important-check { font-weight: 600; }
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; padding: 10px 16px; }
   .seg { order: 5; width: 100%; }
-  .alerts { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; z-index: 40; }
+  .page { padding: 12px 16px; }
+  .link-add { grid-template-columns: 1fr; }
+  .board { grid-template-columns: minmax(0, 1fr); }
+  /* Baris 1: nama, jenis, hapus. Baris 2: tanggal dan jam */
+  .date-rows li { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 32px; padding-bottom: 6px; border-bottom: 1px dashed var(--border); }
+  .date-rows li [data-f="label"] { grid-column: 1; grid-row: 1; }
+  .date-rows li [data-f="kind"] { grid-column: 2; grid-row: 1; }
+  .date-rows li [data-rm] { grid-column: 3; grid-row: 1; }
+  .date-rows li [data-f="date"] { grid-column: 1; grid-row: 2; }
+  .date-rows li [data-f="time"] { grid-column: 2 / 4; grid-row: 2; }
+  .alerts { top: auto; bottom: calc(80px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; z-index: 40; }
   .seg button { flex: 1; }
   .day-view { padding: 14px; }
   .brand span { display: none; }
@@ -515,4 +665,8 @@ dialog label.important-check { font-weight: 600; }
   .dots { display: flex; }
   .row { flex-direction: column; }
   .legend { font-size: .72rem; gap: 4px 10px; }
+}
+
+@media (max-width: 1250px) and (min-width: 1001px) {
+  .brand span { display: none; }
 }

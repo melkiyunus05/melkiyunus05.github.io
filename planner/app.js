@@ -22,6 +22,7 @@ const STORE_KEY = 'elio-planner-v1';
 const CATS_KEY = 'elio-planner-cats-v1';
 const THEME_KEY = 'elio-planner-theme';
 const MODE_KEY = 'elio-planner-mode';
+const PAGE_KEY = 'elio-planner-page';
 const FOCUS_KEY = 'elio-planner-focus-v1';
 const FOCUS_MAX = 3;
 const FIRED_KEY = 'elio-planner-fired-v1';
@@ -41,6 +42,8 @@ let editing = null; // { id, occurrence } saat edit
 let mode = readPref(MODE_KEY, 'day'); // 'day' | 'week' | 'month'
 if (!['day', 'week', 'month'].includes(mode)) mode = 'day';
 let sideTab = 'day';
+let page = readPref(PAGE_KEY, 'cal'); // 'cal' | 'courses' | 'comps'
+if (!['cal', 'courses', 'comps'].includes(page)) page = 'cal';
 
 // ---------- Util tanggal ----------
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -162,6 +165,9 @@ const form = $('#itemForm');
 
 // ---------- Render ----------
 function render() {
+  // Halaman Matkul dan Lomba memakai data yang sama, jadi ikut diperbarui
+  if (page === 'courses') renderCourses();
+  else if (page === 'comps') renderComps();
   renderHeader();
   if (mode === 'month') renderCalendar();
   else if (mode === 'week') renderWeek();
@@ -199,6 +205,18 @@ function setMode(m) {
   view = startOfMonth(fromKey(selected));
   applyMode();
   render();
+}
+
+function setPage(p) {
+  page = p;
+  writePref(PAGE_KEY, p);
+  document.body.dataset.page = p;
+  $('#calPage').hidden = p !== 'cal';
+  $('#coursesPage').hidden = p !== 'courses';
+  $('#compsPage').hidden = p !== 'comps';
+  for (const b of $('#mainNav').children) b.classList.toggle('on', b.dataset.page === p);
+  render();
+  window.scrollTo(0, 0);
 }
 
 function nav(dir) {
@@ -411,6 +429,8 @@ function itemHtml(it, k, opts = {}) {
   const done = isDone(it, k);
   const meta = [];
   meta.push(`<span class="badge" style="--c:${t.color}">${esc(labelOf(it))}</span>`);
+  const course = !opts.hideCourse && typeof courseById === 'function' ? courseById(it.courseId) : null;
+  if (course) meta.push(`<span class="course-tag" style="--cc:${course.color}">${esc(course.code || course.name)}</span>`);
   if (it.time) meta.push(`<span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}</span>`);
   if (it.place) meta.push(`<span>${esc(it.place)}</span>`);
   if (it.weekly) meta.push(`<span>Tiap ${DAYS[fromKey(it.date).getDay()]}</span>`);
@@ -522,6 +542,8 @@ function openForm(it = null, occurrence = selected, preset = {}) {
   $('#deleteBtn').hidden = !it;
   formSubs = it && it.subtasks ? it.subtasks.map((x) => ({ ...x })) : [];
   renderFormSubs();
+  fillCourseSelect(it ? it.courseId : preset.courseId);
+  compFormNote(it);
   if (it) {
     form.title.value = it.title;
     form.date.value = it.date;
@@ -537,8 +559,11 @@ function openForm(it = null, occurrence = selected, preset = {}) {
   } else {
     form.date.value = preset.date || selected;
     form.time.value = preset.time || '';
-    const t = filter !== 'all' ? filter : formType;
+    const t = preset.type || (filter !== 'all' ? filter : formType);
     setFormType(cats.some((c) => c.id === t) ? t : cats[0].id, true);
+    if (preset.weekly !== undefined) { form.weekly.checked = preset.weekly; syncRepeat(); }
+    if (preset.title) form.title.value = preset.title;
+    if (preset.place) form.place.value = preset.place;
   }
   dialog.showModal();
   if (!it) form.title.focus();
@@ -558,6 +583,7 @@ form.addEventListener('submit', (e) => {
     place: form.place.value.trim(),
     notes: form.notes.value.trim(),
     weekly: form.weekly.checked,
+    courseId: form.course.value,
     important: form.important.checked,
     remind: form.remind.value === '' ? '' : Number(form.remind.value),
     updated: Date.now(), // pengingat yang waktunya sudah lewat sebelum disimpan tidak akan dibunyikan
@@ -574,6 +600,7 @@ form.addEventListener('submit', (e) => {
     const it = items.find((x) => x.id === editing.id);
     Object.assign(it, data);
     id = it.id;
+    if (it.compId) onCompItemSaved(it);
   } else {
     id = uid();
     items.push({ id, done: false, created: Date.now(), ...data });
@@ -606,6 +633,7 @@ $('#deleteBtn').addEventListener('click', async () => {
   } else {
     if (!confirm(`Hapus "${it.title}"?`)) return;
     items = items.filter((x) => x.id !== it.id);
+    if (it.compId) onCompItemDeleted(it);
   }
   save();
   dialog.close();
@@ -709,6 +737,7 @@ $('#filters').addEventListener('click', (e) => {
 for (const b of document.querySelectorAll('[data-add]')) b.addEventListener('click', () => openForm());
 $('#prevBtn').addEventListener('click', () => nav(-1));
 $('#nextBtn').addEventListener('click', () => nav(1));
+$('#mainNav').addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (b) setPage(b.dataset.page); });
 $('#modeSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
 $('#todayBtn').addEventListener('click', () => { selected = toKey(new Date()); view = startOfMonth(new Date()); render(); });
 
@@ -735,7 +764,7 @@ for (const el of [grid, $('#dayView')]) {
 
 // Shortcut keyboard di laptop
 document.addEventListener('keydown', (e) => {
-  if (dialog.open || e.target.matches('input, textarea, select')) return;
+  if (page !== 'cal' || document.querySelector('dialog[open]') || e.target.matches('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); openForm(); }
   else if (e.key === 'ArrowLeft') nav(-1);
   else if (e.key === 'ArrowRight') nav(1);
@@ -927,7 +956,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -953,6 +982,18 @@ $('#importFile').addEventListener('change', async (e) => {
       saveCats();
       buildTypePicker();
       renderLegend();
+    }
+    if (Array.isArray(data.courses)) {
+      const byCourse = new Map(courses.map((c) => [c.id, c]));
+      for (const c of data.courses) if (c && c.id) byCourse.set(String(c.id), cleanCourse(c));
+      courses = [...byCourse.values()];
+      saveCourses();
+    }
+    if (Array.isArray(data.comps)) {
+      const byComp = new Map(comps.map((c) => [c.id, c]));
+      for (const c of data.comps) if (c && c.id) byComp.set(String(c.id), cleanComp(c));
+      comps = [...byComp.values()];
+      saveComps();
     }
     if (data.focus && typeof data.focus === 'object') {
       for (const [d, list] of Object.entries(data.focus)) {
@@ -997,26 +1038,4 @@ function toast(msg) {
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
-}
-
-// ---------- Init ----------
-try { applyTheme(localStorage.getItem(THEME_KEY)); } catch {}
-buildTypePicker();
-renderLegend();
-applyMode();
-render();
-updateNotifBtn();
-checkReminders();
-setInterval(checkReminders, 30000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
-
-// Ganti hari otomatis kalau aplikasi dibiarkan terbuka melewati tengah malam
-let lastDay = toKey(new Date());
-setInterval(() => {
-  const now = toKey(new Date());
-  if (now !== lastDay) { lastDay = now; render(); }
-}, 60000);
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }

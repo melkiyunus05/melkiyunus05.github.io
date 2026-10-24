@@ -20,6 +20,11 @@
       <img src="icons/icon.svg" alt="" width="28" height="28">
       <span>Elio Planner</span>
     </div>
+    <nav class="mainnav" id="mainNav" aria-label="Halaman">
+      <button data-page="cal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
+      <button data-page="courses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7"/></svg><span>Matkul</span></button>
+      <button data-page="comps"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/></svg><span>Lomba</span></button>
+    </nav>
     <div class="month-nav">
       <button class="icon-btn" id="prevBtn" aria-label="Sebelumnya">&#8249;</button>
       <h1 id="periodLabel">Bulan</h1>
@@ -44,7 +49,7 @@
     </div>
   </header>
 
-  <main class="layout">
+  <main class="layout" id="calPage">
     <section class="card day-view" id="dayView" hidden>
       <div class="panel-head">
         <div>
@@ -97,9 +102,13 @@
     </aside>
   </main>
 
+  <main class="page" id="coursesPage" hidden></main>
+  <main class="page" id="compsPage" hidden></main>
+
   <dialog id="itemDialog">
     <form method="dialog" id="itemForm">
       <h2 id="formTitle">Tambah item</h2>
+      <p class="form-note" id="formNote" hidden></p>
 
       <label>Kategori
         <div class="type-picker" id="typePicker"></div>
@@ -107,6 +116,10 @@
 
       <label id="subWrap"><span id="subLabel">Jenis</span>
         <select name="sub" id="subSelect"></select>
+      </label>
+
+      <label id="courseWrap" hidden>Mata kuliah
+        <select name="course"></select>
       </label>
 
       <label>Judul
@@ -202,10 +215,119 @@
     </form>
   </dialog>
 
+  <dialog id="courseDialog">
+    <form method="dialog" id="courseForm">
+      <h2 id="courseFormTitle">Tambah mata kuliah</h2>
+      <label>Nama mata kuliah
+        <input name="name" required maxlength="80" placeholder="mis. Fisika Material">
+      </label>
+      <div class="row">
+        <label>Kode
+          <input name="code" maxlength="20" placeholder="mis. SCFI603">
+        </label>
+        <label>SKS
+          <input name="sks" type="number" inputmode="numeric" min="0" max="24" placeholder="3">
+        </label>
+        <label class="color-field">Warna
+          <input name="color" type="color">
+        </label>
+      </div>
+      <label>Dosen
+        <input name="lecturer" maxlength="120" placeholder="mis. Dr. ...">
+      </label>
+      <label>Ruang
+        <input name="room" maxlength="80" placeholder="mis. Gedung B 201">
+      </label>
+      <p class="form-note" id="courseNewHint">Komponen nilai awal: Tugas 20%, Kuis 10%, UTS 35%, UAS 35%. Bisa kamu ubah sesuai kontrak kuliah. Jadwal atau tugas lama yang judulnya sama persis dengan nama matkul akan otomatis ditautkan.</p>
+      <label class="check" id="courseArchiveWrap">
+        <input type="checkbox" name="archived"> Arsipkan (semester sudah selesai)
+      </label>
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="courseDeleteBtn" hidden>Hapus</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="courseCancelBtn">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="compDialog" class="wide">
+    <form method="dialog" id="compForm">
+      <h2 id="compFormTitle">Tambah lomba</h2>
+      <label>Nama lomba
+        <input name="name" required maxlength="100" placeholder="mis. LKTI Nasional Fisika 2026">
+      </label>
+      <div class="row">
+        <label>Penyelenggara
+          <input name="organizer" maxlength="100" placeholder="mis. HIMAFI UI">
+        </label>
+        <label>Bidang
+          <input name="field" list="compFields" maxlength="40" placeholder="mis. LKTI">
+        </label>
+      </div>
+      <div class="row">
+        <label>Tahap
+          <select name="stage"></select>
+        </label>
+        <label id="resultWrap">Hasil
+          <input name="result" list="compResults" maxlength="60" placeholder="mis. Juara 2">
+        </label>
+      </div>
+      <div class="row">
+        <label>Link guidebook / pendaftaran
+          <input name="link" maxlength="500" inputmode="url" placeholder="https://...">
+        </label>
+        <label>Biaya
+          <input name="fee" maxlength="40" placeholder="mis. Rp100.000 / gratis">
+        </label>
+      </div>
+      <label>Tim
+        <input name="team" maxlength="200" placeholder="mis. Elio, Rani, Dimas (dospem: Dr. ...)">
+      </label>
+
+      <div class="subtasks">
+        <div class="sub-head">Tanggal penting</div>
+        <ul class="date-rows" id="compDates"></ul>
+        <button type="button" class="btn small" id="addCompDate">+ Tanggal</button>
+        <small class="field-hint block">Tanggal yang diisi otomatis masuk ke kalender. Deadline diberi pengingat H-1. Baris tanpa tanggal tidak ditampilkan di kalender.</small>
+      </div>
+
+      <div class="subtasks">
+        <div class="sub-head">Checklist berkas dan persiapan <span id="compCheckCount"></span></div>
+        <ul class="subtask-list" id="compChecklist"></ul>
+        <input id="compCheckInput" maxlength="120" placeholder="+ Tambah lalu tekan Enter (mis. Scan KTM, Surat orisinalitas)">
+      </div>
+
+      <label>Catatan
+        <textarea name="notes" rows="3" maxlength="3000" placeholder="Syarat, format karya, kontak panitia, dll."></textarea>
+      </label>
+
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="compDeleteBtn" hidden>Hapus</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="compCancelBtn">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="compFields">
+    <option>LKTI</option><option>Esai</option><option>Business plan</option><option>Olimpiade</option>
+    <option>Debat</option><option>Poster</option><option>Desain</option><option>Video</option>
+    <option>Hackathon</option><option>Robotika</option><option>Karya inovasi</option><option>PKM</option>
+  </datalist>
+  <datalist id="compResults">
+    <option>Juara 1</option><option>Juara 2</option><option>Juara 3</option><option>Juara harapan</option>
+    <option>Finalis</option><option>Semifinalis</option><option>Best paper</option><option>Tidak lolos</option>
+  </datalist>
+
   <div class="alerts" id="alerts" aria-live="polite"></div>
 
   <div class="toast" id="toast" hidden></div>
 
   <script src="app.js"></script>
+  <script src="courses.js"></script>
+  <script src="comps.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
