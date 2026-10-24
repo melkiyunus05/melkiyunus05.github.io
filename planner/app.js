@@ -43,7 +43,7 @@ let mode = readPref(MODE_KEY, 'day'); // 'day' | 'week' | 'month'
 if (!['day', 'week', 'month'].includes(mode)) mode = 'day';
 let sideTab = 'day';
 let page = readPref(PAGE_KEY, 'cal'); // 'cal' | 'courses' | 'comps'
-if (!['cal', 'courses', 'comps'].includes(page)) page = 'cal';
+if (!['cal', 'courses', 'comps', 'timer'].includes(page)) page = 'cal';
 
 // ---------- Util tanggal ----------
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -168,6 +168,8 @@ function render() {
   // Halaman Matkul dan Lomba memakai data yang sama, jadi ikut diperbarui
   if (page === 'courses') renderCourses();
   else if (page === 'comps') renderComps();
+  else if (page === 'timer') renderTimer();
+  updateMiniTimer();
   renderHeader();
   if (mode === 'month') renderCalendar();
   else if (mode === 'week') renderWeek();
@@ -214,6 +216,7 @@ function setPage(p) {
   $('#calPage').hidden = p !== 'cal';
   $('#coursesPage').hidden = p !== 'courses';
   $('#compsPage').hidden = p !== 'comps';
+  $('#timerPage').hidden = p !== 'timer';
   for (const b of $('#mainNav').children) b.classList.toggle('on', b.dataset.page === p);
   render();
   window.scrollTo(0, 0);
@@ -439,6 +442,8 @@ function itemHtml(it, k, opts = {}) {
   if (subs.length) {
     meta.push(`<span class="prog" title="Sub-tugas selesai"><i><b style="width:${subDone / subs.length * 100}%"></b></i>${subDone}/${subs.length}</span>`);
   }
+  const focusMin = typeof itemMinutes === 'function' ? itemMinutes(it.id) : 0;
+  if (focusMin >= 1) meta.push(`<span title="Total waktu fokus">&#9201; ${fmtDur(focusMin)}</span>`);
   if (hasRemind(it)) meta.push(`<span title="Pengingat">&#128276; ${REMIND_LABELS[it.remind] || it.remind + ' mnt'}</span>`);
   if (opts.status === 'now') meta.unshift('<span class="status now">Sedang berlangsung</span>');
   if (opts.status === 'next') meta.unshift('<span class="status next">Berikutnya</span>');
@@ -458,6 +463,7 @@ function itemHtml(it, k, opts = {}) {
         `<li class="${x.done ? 'done' : ''}"><label><input type="checkbox" class="sub-check" data-sub="${esc(x.id)}" ${x.done ? 'checked' : ''}><span>${esc(x.text)}</span></label></li>`).join('')}</ul>` : ''}
       ${it.notes && !showCountdown ? `<div class="notes">${linkify(esc(it.notes))}</div>` : ''}
     </div>
+    ${t.checkable && !done && !it.weekly ? '<button type="button" class="play-btn" data-timer title="Mulai timer fokus" aria-label="Mulai timer fokus untuk tugas ini">&#9654;</button>' : ''}
     ${canFocus ? `<button type="button" class="focus-btn${focused ? ' on' : ''}" data-focus title="${focused ? 'Lepas dari fokus' : 'Jadikan fokus'}" aria-label="${focused ? 'Lepas dari fokus' : 'Jadikan fokus'}">${focused ? '&#9673;' : '&#9678;'}</button>` : ''}
   </li>`;
 }
@@ -672,6 +678,7 @@ function onListClick(e) {
   if (!li) return;
   const it = items.find((x) => x.id === li.dataset.id);
   if (!it) return;
+  if (e.target.closest('[data-timer]')) { onTimerButton(it, li.dataset.key); return; }
   if (e.target.closest('[data-focus]')) { toggleFocus(li.dataset.fd, it.id, li.dataset.key); return; }
   if (e.target.classList.contains('sub-check')) {
     const st = (it.subtasks || []).find((x) => x.id === e.target.dataset.sub);
@@ -818,12 +825,16 @@ function notify(it, k, tag) {
   const when = relDay(k) + (it.time ? `, pukul ${it.time}` : '');
   const body = `${labelOf(it)} · ${when}${it.place ? ' · ' + it.place : ''}`;
   showAlert(it, k, body);
+  systemNotify(it.title, body, tag);
+}
+
+function systemNotify(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const opts = { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' };
   // Notifikasi lewat service worker lebih andal di Android dan aplikasi yang di-install
   (navigator.serviceWorker ? navigator.serviceWorker.getRegistration() : Promise.resolve(null))
-    .then((reg) => reg ? reg.showNotification(it.title, opts) : new Notification(it.title, opts))
-    .catch(() => { try { new Notification(it.title, opts); } catch {} });
+    .then((reg) => reg ? reg.showNotification(title, opts) : new Notification(title, opts))
+    .catch(() => { try { new Notification(title, opts); } catch {} });
 }
 
 function showAlert(it, k, body) {
@@ -956,7 +967,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -994,6 +1005,12 @@ $('#importFile').addEventListener('change', async (e) => {
       for (const c of data.comps) if (c && c.id) byComp.set(String(c.id), cleanComp(c));
       comps = [...byComp.values()];
       saveComps();
+    }
+    if (Array.isArray(data.sessions)) {
+      const bySess = new Map(sessions.map((x) => [x.id, x]));
+      for (const x of data.sessions) if (x && x.id && Number.isFinite(x.start) && Number.isFinite(x.min)) bySess.set(String(x.id), x);
+      sessions = [...bySess.values()];
+      saveSessions();
     }
     if (data.focus && typeof data.focus === 'object') {
       for (const [d, list] of Object.entries(data.focus)) {

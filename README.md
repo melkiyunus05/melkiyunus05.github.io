@@ -9,6 +9,7 @@ Buka di https://melkiyunus05.github.io/planner/ lalu "Install" / "Add to Home Sc
 - Sub-tugas dengan progress, tanda penting, dan Fokus hari ini (maksimal 3)
 - Pengingat (selama aplikasi terbuka atau berjalan di latar belakang)
 - Halaman Mata Kuliah: jadwal, tugas/ujian, kalkulator nilai (skala UI) dan target, IP perkiraan, link, catatan
+- Timer fokus (Pomodoro) yang terhubung ke tugas dan matkul, dengan statistik harian, mingguan, dan per matkul
 - Pelacak Lomba: tahap Incar, Persiapan, Menunggu hasil, Selesai; tanggal penting otomatis masuk kalender; checklist berkas
 - Kategori bisa diatur sendiri lewat menu "Kelola kategori" (nama, warna, urutan, jenis). Bawaan: to do, deadline, ujian, jadwal kuliah, asistensi, acara, pengumuman
 - Jadwal berulang tiap minggu (untuk kuliah dan asistensi)

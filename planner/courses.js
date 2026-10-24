@@ -198,6 +198,10 @@ function courseDetailHtml(c) {
     <div class="course-hero" style="--c:${c.color}">
       <h2>${esc(c.name)}${c.archived ? ' <span class="badge" style="--c:#64748b">Arsip</span>' : ''}</h2>
       <div class="muted">${info.join(' · ') || 'Lengkapi kode, SKS, dosen, dan ruang lewat Edit matkul.'}</div>
+      <div class="study-line">
+        <span>Waktu belajar: <b>${fmtDur(courseMinutes(c.id, toKey(weekStart(today))))}</b> minggu ini · ${fmtDur(courseMinutes(c.id))} total</span>
+        <button class="btn small primary" data-study>&#9654; Mulai belajar</button>
+      </div>
     </div>
     <div class="course-layout">
       <div class="course-col">
@@ -383,6 +387,7 @@ coursesPage.addEventListener('click', (e) => {
     openForm(null, toKey(new Date()), { date: toKey(new Date()), type: presetType('deadline', false), courseId: c.id });
     return;
   }
+  if (t.closest('[data-study]')) { startTimerFor({ kind: 'course', id: c.id }); return; }
   if (t.closest('[data-add-grade]')) {
     c.grading.push({ id: uid(), name: '', weight: 0, score: '' });
     saveCourses();

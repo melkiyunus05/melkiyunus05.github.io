@@ -21,9 +21,10 @@
       <span>Elio Planner</span>
     </div>
     <nav class="mainnav" id="mainNav" aria-label="Halaman">
-      <button data-page="cal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
-      <button data-page="courses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7"/></svg><span>Matkul</span></button>
-      <button data-page="comps"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/></svg><span>Lomba</span></button>
+      <button data-page="cal" title="Kalender"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
+      <button data-page="courses" title="Matkul"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7"/></svg><span>Matkul</span></button>
+      <button data-page="comps" title="Lomba"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/></svg><span>Lomba</span></button>
+      <button data-page="timer" title="Timer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/></svg><span>Timer</span></button>
     </nav>
     <div class="month-nav">
       <button class="icon-btn" id="prevBtn" aria-label="Sebelumnya">&#8249;</button>
@@ -104,6 +105,9 @@
 
   <main class="page" id="coursesPage" hidden></main>
   <main class="page" id="compsPage" hidden></main>
+  <main class="page" id="timerPage" hidden></main>
+
+  <div class="mini-timer" id="miniTimer" role="button" tabindex="0" aria-label="Buka timer" hidden></div>
 
   <dialog id="itemDialog">
     <form method="dialog" id="itemForm">
@@ -328,6 +332,7 @@
   <script src="app.js"></script>
   <script src="courses.js"></script>
   <script src="comps.js"></script>
+  <script src="timer.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

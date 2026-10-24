@@ -507,11 +507,11 @@ dialog label.important-check { font-weight: 600; }
 
 /* ---------- Mata kuliah ---------- */
 .card.pad { padding: 16px 18px; }
-.card h3 { margin: 0 0 10px; font-size: 1rem; }
+.card.pad h3 { margin: 0 0 10px; font-size: 1rem; }
 .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .sec-head h3 { margin: 0; }
 .empty-state { padding: 22px 24px; max-width: 640px; }
-.empty-state h3 { font-size: 1.1rem; }
+.empty-state h3 { font-size: 1.1rem; margin: 0 0 10px; }
 .empty-state p, .empty-state li { color: var(--muted); line-height: 1.6; }
 .empty-state ul { margin: 0 0 16px; padding-left: 20px; }
 
@@ -608,6 +608,91 @@ dialog .color-field input { height: 40px; padding: 2px !important; cursor: point
 .date-rows input, .date-rows select { padding: 7px 8px !important; font-size: .88rem !important; }
 .field-hint.block { display: block; margin-top: 6px; }
 
+/* ---------- Timer fokus ---------- */
+.play-btn {
+  flex-shrink: 0; width: 30px; height: 30px; margin: -2px -2px 0 0;
+  border: 0; border-radius: 99px; cursor: pointer; font-size: .72rem;
+  background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); opacity: .75;
+}
+.item:hover .play-btn { opacity: 1; }
+.play-btn:hover { background: var(--c); color: #fff; }
+
+.timer-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.timer-card { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 22px 18px; }
+.phase-tabs { display: flex; gap: 4px; background: var(--surface-2); border-radius: 10px; padding: 3px; }
+.phase-tabs span { padding: 5px 12px; border-radius: 8px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+.phase-tabs span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.ring-wrap { position: relative; width: min(280px, 72vw); aspect-ratio: 1; }
+.ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 7; }
+.ring-bg { stroke: var(--surface-2); }
+.ring-fg { stroke-linecap: round; transition: stroke-dashoffset .9s linear, stroke .3s; }
+.ring-text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.tm-time { font-size: clamp(2.6rem, 11vw, 3.6rem); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tm-phase { color: var(--muted); font-weight: 600; }
+.cycle-dots { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); }
+.cycle-dots i { width: 10px; height: 10px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); }
+.cycle-dots i.on { background: var(--accent); border-color: var(--accent); }
+.cycle-dots span { margin-left: 4px; }
+.tm-target { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 5px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+.tm-target select {
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: .95rem; width: 100%;
+}
+.tm-target select:disabled { opacity: .8; }
+.tm-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.btn.big { padding: 12px 22px; font-size: 1rem; border-radius: 12px; }
+.tm-settings { width: 100%; max-width: 420px; font-size: .88rem; }
+.tm-settings summary { cursor: pointer; color: var(--muted); font-weight: 600; text-align: center; }
+.tm-set-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 8px; }
+.tm-set-grid label { display: flex; flex-direction: column; gap: 4px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.tm-set-grid input {
+  padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: .92rem; width: 100%;
+}
+.tm-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.tm-settings label.check { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.tm-settings label.check input { width: 17px; height: 17px; accent-color: var(--accent); }
+
+.card.pad.tm-stats h3 { margin-top: 20px; display: flex; align-items: baseline; gap: 8px; }
+.card.pad.tm-stats h3:first-child { margin-top: 0; }
+.small-n { font-size: .82rem; font-weight: 600; }
+.today-total b { font-size: 1.6rem; }
+.goal-bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin-top: 8px; }
+.goal-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.goal-bar.done i { background: #10b981; }
+.ok-text { color: #10b981; font-weight: 700; margin: 8px 0 0; font-size: .9rem; }
+.week-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; height: 130px; }
+.wb { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: .72rem; color: var(--muted); }
+.wb-col { position: relative; flex: 1; width: 100%; max-width: 34px; background: var(--surface-2); border-radius: 8px; overflow: hidden; display: flex; align-items: flex-end; }
+.wb-col i { display: block; width: 100%; background: color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 8px 8px 0 0; }
+.wb.today .wb-col i { background: var(--accent); }
+.wb.today span { color: var(--accent); font-weight: 700; }
+.wb-goal { position: absolute; left: 0; right: 0; border-top: 2px dashed color-mix(in srgb, var(--text) 25%, transparent); }
+.cr-list { display: flex; flex-direction: column; gap: 8px; }
+.cr-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .86rem; }
+.cr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.cr-bar i { display: block; height: 100%; border-radius: 99px; }
+.cr-min { font-weight: 700; font-size: .8rem; }
+.sess-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sess-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 32px; gap: 10px; align-items: center; font-size: .85rem; padding: 6px 4px 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.sess-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.study-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; font-size: .88rem; }
+
+.mini-timer {
+  position: fixed; z-index: 25; right: 20px; bottom: 20px;
+  display: flex; align-items: center; gap: 10px; max-width: min(360px, calc(100vw - 32px));
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--pc);
+  border-radius: 999px; padding: 6px 8px 6px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); cursor: pointer;
+}
+.mt-dot { width: 9px; height: 9px; border-radius: 99px; background: var(--pc); flex-shrink: 0; }
+.mt-dot.live { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.mt-time { font-weight: 800; font-variant-numeric: tabular-nums; }
+.mt-label { font-size: .82rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mini-timer .icon-btn { border-radius: 99px; flex-shrink: 0; font-size: .75rem; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
@@ -621,7 +706,8 @@ dialog .color-field input { height: 40px; padding: 2px !important; cursor: point
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
-  .course-layout { grid-template-columns: minmax(0, 1fr); }
+  .course-layout, .timer-layout { grid-template-columns: minmax(0, 1fr); }
+  .mini-timer { right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); }
   .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Tablet dan HP: navigasi utama pindah ke bawah seperti aplikasi pada umumnya */
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -668,5 +754,7 @@ dialog .color-field input { height: 40px; padding: 2px !important; cursor: point
 }
 
 @media (max-width: 1250px) and (min-width: 1001px) {
-  .brand span { display: none; }
+  /* Laptop kecil / tablet landscape: menu utama cukup ikon supaya header tidak penuh */
+  .brand span, .mainnav button span { display: none; }
+  .mainnav button { padding: 8px 10px; }
 }

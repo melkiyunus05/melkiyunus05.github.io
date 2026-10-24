@@ -1,12 +1,14 @@
 'use strict';
-// Dimuat paling akhir, setelah app.js, courses.js, dan comps.js
+// Dimuat paling akhir, setelah app.js, courses.js, comps.js, dan timer.js
 
 // ---------- Init ----------
 try { applyTheme(localStorage.getItem(THEME_KEY)); } catch {}
 buildTypePicker();
 renderLegend();
 applyMode();
+tickTimer(); // selesaikan fase timer yang habis saat aplikasi tertutup
 setPage(page);
+setInterval(tickTimer, 1000);
 updateNotifBtn();
 checkReminders();
 setInterval(checkReminders, 30000);
