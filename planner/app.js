@@ -22,6 +22,7 @@ const STORE_KEY = 'elio-planner-v1';
 const CATS_KEY = 'elio-planner-cats-v1';
 const THEME_KEY = 'elio-planner-theme';
 const MODE_KEY = 'elio-planner-mode';
+const PAGE_KEY = 'elio-planner-page';
 const FOCUS_KEY = 'elio-planner-focus-v1';
 const FOCUS_MAX = 3;
 const FIRED_KEY = 'elio-planner-fired-v1';
@@ -41,6 +42,8 @@ let editing = null; // { id, occurrence } saat edit
 let mode = readPref(MODE_KEY, 'day'); // 'day' | 'week' | 'month'
 if (!['day', 'week', 'month'].includes(mode)) mode = 'day';
 let sideTab = 'day';
+let page = readPref(PAGE_KEY, 'cal'); // 'cal' | 'courses' | 'comps'
+if (!['cal', 'courses', 'comps'].includes(page)) page = 'cal';
 
 // ---------- Util tanggal ----------
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -162,6 +165,9 @@ const form = $('#itemForm');
 
 // ---------- Render ----------
 function render() {
+  // Halaman Matkul dan Lomba memakai data yang sama, jadi ikut diperbarui
+  if (page === 'courses') renderCourses();
+  else if (page === 'comps') renderComps();
   renderHeader();
   if (mode === 'month') renderCalendar();
   else if (mode === 'week') renderWeek();
@@ -199,6 +205,18 @@ function setMode(m) {
   view = startOfMonth(fromKey(selected));
   applyMode();
   render();
+}
+
+function setPage(p) {
+  page = p;
+  writePref(PAGE_KEY, p);
+  document.body.dataset.page = p;
+  $('#calPage').hidden = p !== 'cal';
+  $('#coursesPage').hidden = p !== 'courses';
+  $('#compsPage').hidden = p !== 'comps';
+  for (const b of $('#mainNav').children) b.classList.toggle('on', b.dataset.page === p);
+  render();
+  window.scrollTo(0, 0);
 }
 
 function nav(dir) {
@@ -709,6 +727,7 @@ $('#filters').addEventListener('click', (e) => {
 for (const b of document.querySelectorAll('[data-add]')) b.addEventListener('click', () => openForm());
 $('#prevBtn').addEventListener('click', () => nav(-1));
 $('#nextBtn').addEventListener('click', () => nav(1));
+$('#mainNav').addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (b) setPage(b.dataset.page); });
 $('#modeSeg').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
 $('#todayBtn').addEventListener('click', () => { selected = toKey(new Date()); view = startOfMonth(new Date()); render(); });
 
@@ -735,7 +754,7 @@ for (const el of [grid, $('#dayView')]) {
 
 // Shortcut keyboard di laptop
 document.addEventListener('keydown', (e) => {
-  if (dialog.open || e.target.matches('input, textarea, select')) return;
+  if (page !== 'cal' || document.querySelector('dialog[open]') || e.target.matches('input, textarea, select')) return;
   if (e.key === 'n') { e.preventDefault(); openForm(); }
   else if (e.key === 'ArrowLeft') nav(-1);
   else if (e.key === 'ArrowRight') nav(1);
@@ -997,26 +1016,4 @@ function toast(msg) {
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
-}
-
-// ---------- Init ----------
-try { applyTheme(localStorage.getItem(THEME_KEY)); } catch {}
-buildTypePicker();
-renderLegend();
-applyMode();
-render();
-updateNotifBtn();
-checkReminders();
-setInterval(checkReminders, 30000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
-
-// Ganti hari otomatis kalau aplikasi dibiarkan terbuka melewati tengah malam
-let lastDay = toKey(new Date());
-setInterval(() => {
-  const now = toKey(new Date());
-  if (now !== lastDay) { lastDay = now; render(); }
-}, 60000);
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }

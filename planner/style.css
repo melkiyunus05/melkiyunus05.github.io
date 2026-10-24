@@ -79,7 +79,29 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .month-nav { display: flex; align-items: center; gap: 6px; margin: 0 auto; }
 .month-nav h1 { font-size: 1.15rem; margin: 0 6px; min-width: 150px; text-align: center; }
 
-.top-actions { position: relative; }
+.top-actions { position: relative; margin-left: auto; }
+
+/* ---------- Navigasi utama ---------- */
+.mainnav { display: flex; gap: 4px; }
+.mainnav button {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 0; background: none; cursor: pointer;
+  padding: 8px 12px; border-radius: 10px;
+  font-weight: 600; font-size: .92rem; color: var(--muted);
+}
+.mainnav button:hover { background: var(--surface-2); }
+.mainnav button.on { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.mainnav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* Navigasi bulan dan pilihan tampilan hanya untuk halaman Kalender */
+body:not([data-page="cal"]) .month-nav, body:not([data-page="cal"]) .seg { display: none; }
+
+/* ---------- Halaman (Matkul, Lomba) ---------- */
+.page { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.page[hidden], .layout[hidden] { display: none; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.page-head h2 { margin: 0; font-size: 1.35rem; }
+.muted { color: var(--muted); }
+.page-sub { margin: 4px 0 0; color: var(--muted); font-size: .88rem; }
 
 .icon-btn {
   width: 36px; height: 36px;
@@ -494,6 +516,17 @@ dialog label.important-check { font-weight: 600; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
+  /* Tablet dan HP: navigasi utama pindah ke bawah seperti aplikasi pada umumnya */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .mainnav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; gap: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
+  }
+  .mainnav button { flex: 1; flex-direction: column; gap: 2px; padding: 6px; font-size: .72rem; }
+  .mainnav button.on { background: none; }
+  .mainnav svg { width: 22px; height: 22px; }
+  .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; max-height: none; }
 }
@@ -501,7 +534,8 @@ dialog label.important-check { font-weight: 600; }
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; padding: 10px 16px; }
   .seg { order: 5; width: 100%; }
-  .alerts { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; z-index: 40; }
+  .page { padding: 12px 16px; }
+  .alerts { top: auto; bottom: calc(80px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; z-index: 40; }
   .seg button { flex: 1; }
   .day-view { padding: 14px; }
   .brand span { display: none; }
@@ -515,4 +549,8 @@ dialog label.important-check { font-weight: 600; }
   .dots { display: flex; }
   .row { flex-direction: column; }
   .legend { font-size: .72rem; gap: 4px 10px; }
+}
+
+@media (max-width: 1250px) and (min-width: 1001px) {
+  .brand span { display: none; }
 }

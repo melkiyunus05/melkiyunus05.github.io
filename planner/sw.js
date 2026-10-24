@@ -1,10 +1,13 @@
 // Naikkan versi ini setiap kali file aplikasi diubah supaya cache diperbarui
-const CACHE = 'elio-planner-v3';
+const CACHE = 'elio-planner-v4';
 const ASSETS = [
   './',
   'index.html',
   'style.css',
   'app.js',
+  'courses.js',
+  'comps.js',
+  'main.js',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',
