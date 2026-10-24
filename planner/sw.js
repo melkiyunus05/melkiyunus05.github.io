@@ -1,5 +1,5 @@
 // Naikkan versi ini setiap kali file aplikasi diubah supaya cache diperbarui
-const CACHE = 'elio-planner-v2';
+const CACHE = 'elio-planner-v3';
 const ASSETS = [
   './',
   'index.html',
@@ -34,5 +34,16 @@ self.addEventListener('fetch', (e) => {
         return res;
       })
       .catch(() => caches.match(e.request, { ignoreSearch: true }))
+  );
+});
+
+// Klik notifikasi pengingat: buka atau fokuskan jendela aplikasi
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const win = list.find((c) => c.url.includes('/planner/'));
+      return win ? win.focus() : self.clients.openWindow('./');
+    })
   );
 });
