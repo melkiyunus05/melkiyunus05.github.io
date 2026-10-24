@@ -22,6 +22,8 @@ const STORE_KEY = 'elio-planner-v1';
 const CATS_KEY = 'elio-planner-cats-v1';
 const THEME_KEY = 'elio-planner-theme';
 const MODE_KEY = 'elio-planner-mode';
+const FOCUS_KEY = 'elio-planner-focus-v1';
+const FOCUS_MAX = 3;
 const HOUR_PX = 48; // tinggi satu jam di tampilan mingguan
 const UPCOMING_DAYS = 14;
 const CHIPS_PER_CELL = 3;
@@ -29,6 +31,7 @@ const CHIPS_PER_CELL = 3;
 // ---------- State ----------
 let items = load();
 let cats = loadCats();
+let focus = loadFocus(); // { 'YYYY-MM-DD': [{ id, k }] }, k = tanggal kemunculan item
 let view = startOfMonth(new Date());
 let selected = toKey(new Date());
 let filter = 'all';
@@ -90,6 +93,30 @@ function saveCats() {
   try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); }
   catch { toast('Gagal menyimpan kategori.'); }
 }
+function loadFocus() {
+  try {
+    const data = JSON.parse(localStorage.getItem(FOCUS_KEY));
+    if (!data || typeof data !== 'object') return {};
+    // Buang fokus yang sudah lebih dari 60 hari supaya penyimpanan tetap kecil
+    const cutoff = toKey(addDays(new Date(), -60));
+    for (const d of Object.keys(data)) if (d < cutoff || !Array.isArray(data[d])) delete data[d];
+    return data;
+  } catch { return {}; }
+}
+function saveFocus() { try { localStorage.setItem(FOCUS_KEY, JSON.stringify(focus)); } catch {} }
+function focusOn(d) { return (focus[d] || []).filter((f) => items.some((it) => it.id === f.id)); }
+function isFocused(d, id, k) { return focusOn(d).some((f) => f.id === id && f.k === k); }
+function toggleFocus(d, id, k) {
+  const list = focusOn(d);
+  const i = list.findIndex((f) => f.id === id && f.k === k);
+  if (i >= 0) list.splice(i, 1);
+  else if (list.length >= FOCUS_MAX) { toast(`Fokus maksimal ${FOCUS_MAX}. Lepas salah satu dulu.`); return; }
+  else list.push({ id, k });
+  if (list.length) focus[d] = list; else delete focus[d];
+  saveFocus();
+  render();
+  if (i < 0) toast(d === toKey(new Date()) ? 'Ditambahkan ke Fokus hari ini' : `Ditambahkan ke Fokus ${shortDate(d)}`);
+}
 function cat(id) { return cats.find((c) => c.id === id) || UNKNOWN_CAT; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
@@ -110,7 +137,8 @@ function itemsOn(k) {
   return out.sort(compareItems);
 }
 function compareItems(a, b) {
-  const ta = a.time || '99:99', tb = b.time || '99:99';
+  // Tanpa jam diletakkan di akhir, yang penting lebih dulu
+  const ta = a.time || (a.important ? '99:98' : '99:99'), tb = b.time || (b.important ? '99:98' : '99:99');
   if (ta !== tb) return ta < tb ? -1 : 1;
   return a.title.localeCompare(b.title);
 }
@@ -210,7 +238,7 @@ function renderCalendar() {
 
     let html = `<div class="num"><b>${d.getDate()}</b></div>`;
     html += list.slice(0, CHIPS_PER_CELL).map((it) =>
-      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}">${it.time ? it.time + ' ' : ''}${esc(it.title)}</div>`
+      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}">${it.important ? '&#9733; ' : ''}${it.time ? it.time + ' ' : ''}${esc(it.title)}</div>`
     ).join('');
     if (list.length > CHIPS_PER_CELL) html += `<div class="more">+${list.length - CHIPS_PER_CELL} lagi</div>`;
     html += `<div class="dots">${list.slice(0, 6).map((it) => `<i style="--c:${cat(it.type).color}"></i>`).join('')}</div>`;
@@ -234,7 +262,7 @@ function renderDay() {
 
   const list = filter === 'all' ? all : all.filter((it) => it.type === filter);
   $('#dayItems').innerHTML = list.length
-    ? list.map((it) => itemHtml(it, selected)).join('')
+    ? list.map((it) => itemHtml(it, selected, { focusDate: selected })).join('')
     : `<li class="empty">Belum ada apa pun di tanggal ini.<br>Tekan <b>+ Tambah</b> untuk mulai.</li>`;
 }
 
@@ -243,7 +271,8 @@ function renderDayView() {
   const today = toKey(new Date());
   $('#dvTitle').textContent = prettyDate(k);
   $('#dvSub').textContent = relDay(k);
-  const list = itemsOn(k);
+  const fl = focusOn(k);
+  const list = itemsOn(k).filter((it) => !fl.some((f) => f.id === it.id && f.k === k)); // yang sudah jadi fokus tidak diulang
   const timed = list.filter((it) => it.time);
   const untimed = list.filter((it) => !it.time);
 
@@ -260,9 +289,16 @@ function renderDayView() {
 
   const section = (title, rows, empty) => `<h3 class="sec-title">${title}</h3>` +
     (rows.length ? `<ul class="items">${rows.join('')}</ul>` : `<p class="sec-empty">${empty}</p>`);
+  const focusItems = fl.map((f) => ({ it: items.find((x) => x.id === f.id), k: f.k }));
+  const fDone = focusItems.filter((f) => isDone(f.it, f.k)).length;
+  const fTitle = `Fokus${k === today ? ' hari ini' : ''} <span class="focus-count">${fl.length ? `${fDone}/${fl.length} selesai` : `maks ${FOCUS_MAX}`}</span>`;
+  const fEmpty = `Pilih maksimal ${FOCUS_MAX} hal terpenting untuk diselesaikan. Tekan <span class="focus-icon">&#9678;</span> pada tugas mana pun, termasuk deadline di daftar Mendatang.`;
   $('#dvBody').innerHTML =
-    section('Jadwal', timed.map((it) => itemHtml(it, k, { status: status.get(it.id) })), 'Tidak ada jadwal berjam di hari ini.') +
-    section('Tugas dan lainnya', untimed.map((it) => itemHtml(it, k)), 'Tidak ada tugas tanpa jam di hari ini.');
+    `<div class="focus-box${fl.length && fDone === fl.length ? ' all-done' : ''}">` +
+    section(fTitle, focusItems.map((f) => itemHtml(f.it, f.k, { focusDate: k, countdown: f.k !== k })), fEmpty) +
+    (fl.length && fDone === fl.length ? '<p class="focus-done">Semua fokus selesai. Mantap!</p>' : '') + '</div>' +
+    section('Jadwal', timed.map((it) => itemHtml(it, k, { status: status.get(it.id), focusDate: k })), 'Tidak ada jadwal berjam di hari ini.') +
+    section('Tugas dan lainnya', untimed.map((it) => itemHtml(it, k, { focusDate: k })), 'Tidak ada tugas tanpa jam di hari ini.');
 }
 
 function renderWeek() {
@@ -287,7 +323,7 @@ function renderWeek() {
     const cls = [k === today ? 'today' : '', k === selected ? 'selected' : '', d.getDay() === 0 ? 'sunday' : ''].join(' ');
     head += `<button type="button" class="wk-day ${cls}" data-day="${k}"><span>${DAYS[d.getDay()].slice(0, 3)}</span><b>${d.getDate()}</b></button>`;
     allday += `<div class="wk-allday ${cls}">${lists[i].filter((it) => !it.time).map((it) =>
-      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}" data-id="${it.id}" data-key="${k}">${esc(it.title)}</div>`).join('')}</div>`;
+      `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}" data-id="${it.id}" data-key="${k}">${it.important ? '&#9733; ' : ''}${esc(it.title)}</div>`).join('')}</div>`;
     cols += `<div class="wk-col ${cls}" data-key="${k}">${weekEvents(lists[i].filter((it) => it.time), k, minH)}`;
     if (k === today && nowMin() >= minH * 60 && nowMin() < maxH * 60) {
       cols += `<div class="wk-now" style="top:${(nowMin() - minH * 60) / 60 * HOUR_PX}px"></div>`;
@@ -338,7 +374,7 @@ function weekEvents(list, k, minH) {
     const height = (e - s) / 60 * HOUR_PX - 2;
     return `<div class="wk-ev${isDone(it, k) ? ' done' : ''}" data-id="${it.id}" data-key="${k}"
       style="--c:${cat(it.type).color};top:${top}px;height:${height}px;left:calc(${lane / lanes * 100}% + 2px);width:calc(${100 / lanes}% - 4px)">
-      <b>${esc(it.title)}</b><span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}${it.place ? ' · ' + esc(it.place) : ''}</span></div>`;
+      <b>${it.important ? '&#9733; ' : ''}${esc(it.title)}</b><span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}${it.place ? ' · ' + esc(it.place) : ''}</span></div>`;
   }).join('');
 }
 
@@ -351,14 +387,14 @@ function renderUpcoming() {
     if (!it.weekly && cat(it.type).checkable && !it.done && it.date < today) overdue.push(it);
   }
   overdue.sort((a, b) => a.date.localeCompare(b.date));
-  if (overdue.length) groups.push({ label: 'Terlewat', rows: overdue.map((it) => itemHtml(it, it.date, { countdown: true })) });
+  if (overdue.length) groups.push({ label: 'Terlewat', rows: overdue.map((it) => itemHtml(it, it.date, { countdown: true, focusDate: today })) });
 
   for (let i = 0; i <= UPCOMING_DAYS; i++) {
     const k = toKey(addDays(fromKey(today), i));
     const rows = itemsOn(k)
       .filter((it) => !(it.weekly && !cat(it.type).checkable)) // jadwal rutin (kuliah, asistensi) tidak perlu memenuhi daftar ini
       .filter((it) => !isDone(it, k))
-      .map((it) => itemHtml(it, k, { countdown: true }));
+      .map((it) => itemHtml(it, k, { countdown: true, focusDate: today }));
     if (rows.length) groups.push({ label: i === 0 ? 'Hari ini' : i === 1 ? 'Besok' : shortDate(k), rows });
   }
 
@@ -388,15 +424,18 @@ function itemHtml(it, k, opts = {}) {
     const txt = n < 0 ? `Lewat ${-n} hari` : n === 0 ? 'Hari ini' : `H-${n}`;
     meta.push(`<span class="countdown${n > 3 ? ' far' : ''}">${txt}</span>`);
   }
-  return `<li class="item${done ? ' done' : ''}${opts.status ? ' ' + opts.status : ''}" style="--c:${t.color}" data-id="${it.id}" data-key="${k}">
+  const canFocus = opts.focusDate && t.checkable;
+  const focused = canFocus && isFocused(opts.focusDate, it.id, k);
+  return `<li class="item${done ? ' done' : ''}${opts.status ? ' ' + opts.status : ''}" style="--c:${t.color}" data-id="${it.id}" data-key="${k}"${canFocus ? ` data-fd="${opts.focusDate}"` : ''}>
     ${t.checkable ? `<input type="checkbox" ${done ? 'checked' : ''} aria-label="Tandai selesai">` : ''}
     <div class="body">
-      <div class="title">${esc(it.title)}</div>
+      <div class="title">${it.important ? '<span class="star" title="Penting">&#9733;</span> ' : ''}${esc(it.title)}</div>
       <div class="meta">${meta.join('')}</div>
       ${subs.length && !showCountdown ? `<ul class="subs">${subs.map((x) =>
         `<li class="${x.done ? 'done' : ''}"><label><input type="checkbox" class="sub-check" data-sub="${esc(x.id)}" ${x.done ? 'checked' : ''}><span>${esc(x.text)}</span></label></li>`).join('')}</ul>` : ''}
       ${it.notes && !showCountdown ? `<div class="notes">${linkify(esc(it.notes))}</div>` : ''}
     </div>
+    ${canFocus ? `<button type="button" class="focus-btn${focused ? ' on' : ''}" data-focus title="${focused ? 'Lepas dari fokus' : 'Jadikan fokus'}" aria-label="${focused ? 'Lepas dari fokus' : 'Jadikan fokus'}">${focused ? '&#9673;' : '&#9678;'}</button>` : ''}
   </li>`;
 }
 
@@ -488,6 +527,7 @@ function openForm(it = null, occurrence = selected, preset = {}) {
     form.place.value = it.place || '';
     form.notes.value = it.notes || '';
     form.weekly.checked = !!it.weekly;
+    form.important.checked = !!it.important;
     form.until.value = it.until || '';
     setFormType(it.type, false, it.sub);
   } else {
@@ -514,6 +554,7 @@ form.addEventListener('submit', (e) => {
     place: form.place.value.trim(),
     notes: form.notes.value.trim(),
     weekly: form.weekly.checked,
+    important: form.important.checked,
     until: form.weekly.checked ? form.until.value : '',
     subtasks: formSubs.map((x) => ({ ...x, text: x.text.trim() })).filter((x) => x.text),
   };
@@ -597,6 +638,7 @@ function onListClick(e) {
   if (!li) return;
   const it = items.find((x) => x.id === li.dataset.id);
   if (!it) return;
+  if (e.target.closest('[data-focus]')) { toggleFocus(li.dataset.fd, it.id, li.dataset.key); return; }
   if (e.target.classList.contains('sub-check')) {
     const st = (it.subtasks || []).find((x) => x.id === e.target.dataset.sub);
     if (!st) return;
@@ -780,7 +822,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -806,6 +848,15 @@ $('#importFile').addEventListener('change', async (e) => {
       saveCats();
       buildTypePicker();
       renderLegend();
+    }
+    if (data.focus && typeof data.focus === 'object') {
+      for (const [d, list] of Object.entries(data.focus)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Array.isArray(list)) continue;
+        const merged = [...(focus[d] || [])];
+        for (const f of list) if (f && f.id && f.k && !merged.some((x) => x.id === f.id && x.k === f.k)) merged.push({ id: String(f.id), k: String(f.k) });
+        focus[d] = merged.slice(0, FOCUS_MAX);
+      }
+      saveFocus();
     }
     const valid = incoming.filter((it) => it && it.id && it.title && /^\d{4}-\d{2}-\d{2}$/.test(it.date));
     const byId = new Map(items.map((it) => [it.id, it]));
