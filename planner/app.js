@@ -543,6 +543,7 @@ function openForm(it = null, occurrence = selected, preset = {}) {
   formSubs = it && it.subtasks ? it.subtasks.map((x) => ({ ...x })) : [];
   renderFormSubs();
   fillCourseSelect(it ? it.courseId : preset.courseId);
+  compFormNote(it);
   if (it) {
     form.title.value = it.title;
     form.date.value = it.date;
@@ -599,6 +600,7 @@ form.addEventListener('submit', (e) => {
     const it = items.find((x) => x.id === editing.id);
     Object.assign(it, data);
     id = it.id;
+    if (it.compId) onCompItemSaved(it);
   } else {
     id = uid();
     items.push({ id, done: false, created: Date.now(), ...data });
@@ -631,6 +633,7 @@ $('#deleteBtn').addEventListener('click', async () => {
   } else {
     if (!confirm(`Hapus "${it.title}"?`)) return;
     items = items.filter((x) => x.id !== it.id);
+    if (it.compId) onCompItemDeleted(it);
   }
   save();
   dialog.close();
@@ -953,7 +956,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -985,6 +988,12 @@ $('#importFile').addEventListener('change', async (e) => {
       for (const c of data.courses) if (c && c.id) byCourse.set(String(c.id), cleanCourse(c));
       courses = [...byCourse.values()];
       saveCourses();
+    }
+    if (Array.isArray(data.comps)) {
+      const byComp = new Map(comps.map((c) => [c.id, c]));
+      for (const c of data.comps) if (c && c.id) byComp.set(String(c.id), cleanComp(c));
+      comps = [...byComp.values()];
+      saveComps();
     }
     if (data.focus && typeof data.focus === 'object') {
       for (const [d, list] of Object.entries(data.focus)) {

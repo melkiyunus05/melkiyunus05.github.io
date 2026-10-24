@@ -8,6 +8,8 @@ Buka di https://melkiyunus05.github.io/planner/ lalu "Install" / "Add to Home Sc
 - Tiga tampilan: Hari (jadwal, tugas, dan Fokus hari ini), Minggu (timetable), dan Bulan
 - Sub-tugas dengan progress, tanda penting, dan Fokus hari ini (maksimal 3)
 - Pengingat (selama aplikasi terbuka atau berjalan di latar belakang)
+- Halaman Mata Kuliah: jadwal, tugas/ujian, kalkulator nilai (skala UI) dan target, IP perkiraan, link, catatan
+- Pelacak Lomba: tahap Incar, Persiapan, Menunggu hasil, Selesai; tanggal penting otomatis masuk kalender; checklist berkas
 - Kategori bisa diatur sendiri lewat menu "Kelola kategori" (nama, warna, urutan, jenis). Bawaan: to do, deadline, ujian, jadwal kuliah, asistensi, acara, pengumuman
 - Jadwal berulang tiap minggu (untuk kuliah dan asistensi)
 - Tab "Mendatang" berisi hitung mundur H-n untuk 14 hari ke depan

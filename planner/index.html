@@ -108,6 +108,7 @@
   <dialog id="itemDialog">
     <form method="dialog" id="itemForm">
       <h2 id="formTitle">Tambah item</h2>
+      <p class="form-note" id="formNote" hidden></p>
 
       <label>Kategori
         <div class="type-picker" id="typePicker"></div>
@@ -249,6 +250,76 @@
       </div>
     </form>
   </dialog>
+
+  <dialog id="compDialog" class="wide">
+    <form method="dialog" id="compForm">
+      <h2 id="compFormTitle">Tambah lomba</h2>
+      <label>Nama lomba
+        <input name="name" required maxlength="100" placeholder="mis. LKTI Nasional Fisika 2026">
+      </label>
+      <div class="row">
+        <label>Penyelenggara
+          <input name="organizer" maxlength="100" placeholder="mis. HIMAFI UI">
+        </label>
+        <label>Bidang
+          <input name="field" list="compFields" maxlength="40" placeholder="mis. LKTI">
+        </label>
+      </div>
+      <div class="row">
+        <label>Tahap
+          <select name="stage"></select>
+        </label>
+        <label id="resultWrap">Hasil
+          <input name="result" list="compResults" maxlength="60" placeholder="mis. Juara 2">
+        </label>
+      </div>
+      <div class="row">
+        <label>Link guidebook / pendaftaran
+          <input name="link" maxlength="500" inputmode="url" placeholder="https://...">
+        </label>
+        <label>Biaya
+          <input name="fee" maxlength="40" placeholder="mis. Rp100.000 / gratis">
+        </label>
+      </div>
+      <label>Tim
+        <input name="team" maxlength="200" placeholder="mis. Elio, Rani, Dimas (dospem: Dr. ...)">
+      </label>
+
+      <div class="subtasks">
+        <div class="sub-head">Tanggal penting</div>
+        <ul class="date-rows" id="compDates"></ul>
+        <button type="button" class="btn small" id="addCompDate">+ Tanggal</button>
+        <small class="field-hint block">Tanggal yang diisi otomatis masuk ke kalender. Deadline diberi pengingat H-1. Baris tanpa tanggal tidak ditampilkan di kalender.</small>
+      </div>
+
+      <div class="subtasks">
+        <div class="sub-head">Checklist berkas dan persiapan <span id="compCheckCount"></span></div>
+        <ul class="subtask-list" id="compChecklist"></ul>
+        <input id="compCheckInput" maxlength="120" placeholder="+ Tambah lalu tekan Enter (mis. Scan KTM, Surat orisinalitas)">
+      </div>
+
+      <label>Catatan
+        <textarea name="notes" rows="3" maxlength="3000" placeholder="Syarat, format karya, kontak panitia, dll."></textarea>
+      </label>
+
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="compDeleteBtn" hidden>Hapus</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="compCancelBtn">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="compFields">
+    <option>LKTI</option><option>Esai</option><option>Business plan</option><option>Olimpiade</option>
+    <option>Debat</option><option>Poster</option><option>Desain</option><option>Video</option>
+    <option>Hackathon</option><option>Robotika</option><option>Karya inovasi</option><option>PKM</option>
+  </datalist>
+  <datalist id="compResults">
+    <option>Juara 1</option><option>Juara 2</option><option>Juara 3</option><option>Juara harapan</option>
+    <option>Finalis</option><option>Semifinalis</option><option>Best paper</option><option>Tidak lolos</option>
+  </datalist>
 
   <div class="alerts" id="alerts" aria-live="polite"></div>
 
