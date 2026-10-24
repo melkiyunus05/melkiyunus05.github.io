@@ -422,6 +422,21 @@ dialog.wide { width: min(640px, calc(100vw - 24px)); }
 .cat-flags { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 .cat-flags label.check { font-size: .85rem; flex: none; }
 
+/* ---------- Sub-tugas ---------- */
+.subtasks[hidden] { display: none; }
+.sub-head { font-size: .82rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; }
+.subtask-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.subtask-list li { display: flex; align-items: center; gap: 6px; }
+.subtask-list input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+.subtask-list .st-text { flex: 1; padding: 6px 9px !important; }
+.subs { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.subs label { display: flex; align-items: center; gap: 7px; font-size: .84rem; cursor: pointer; }
+.item .subs input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--c); margin: 0; flex-shrink: 0; }
+.subs li.done span { text-decoration: line-through; color: var(--muted); }
+.prog { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.prog i { width: 46px; height: 5px; border-radius: 9px; background: var(--surface-2); overflow: hidden; display: inline-block; }
+.prog b { display: block; height: 100%; background: var(--c); }
+
 .form-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
 

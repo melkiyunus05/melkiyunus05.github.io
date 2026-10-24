@@ -376,6 +376,11 @@ function itemHtml(it, k, opts = {}) {
   if (it.time) meta.push(`<span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}</span>`);
   if (it.place) meta.push(`<span>${esc(it.place)}</span>`);
   if (it.weekly) meta.push(`<span>Tiap ${DAYS[fromKey(it.date).getDay()]}</span>`);
+  const subs = it.subtasks || [];
+  const subDone = subs.filter((x) => x.done).length;
+  if (subs.length) {
+    meta.push(`<span class="prog" title="Sub-tugas selesai"><i><b style="width:${subDone / subs.length * 100}%"></b></i>${subDone}/${subs.length}</span>`);
+  }
   if (opts.status === 'now') meta.unshift('<span class="status now">Sedang berlangsung</span>');
   if (opts.status === 'next') meta.unshift('<span class="status next">Berikutnya</span>');
   if (showCountdown) {
@@ -388,6 +393,8 @@ function itemHtml(it, k, opts = {}) {
     <div class="body">
       <div class="title">${esc(it.title)}</div>
       <div class="meta">${meta.join('')}</div>
+      ${subs.length && !showCountdown ? `<ul class="subs">${subs.map((x) =>
+        `<li class="${x.done ? 'done' : ''}"><label><input type="checkbox" class="sub-check" data-sub="${esc(x.id)}" ${x.done ? 'checked' : ''}><span>${esc(x.text)}</span></label></li>`).join('')}</ul>` : ''}
       ${it.notes && !showCountdown ? `<div class="notes">${linkify(esc(it.notes))}</div>` : ''}
     </div>
   </li>`;
@@ -402,6 +409,7 @@ function linkify(s) {
 
 // ---------- Form ----------
 let formType = 'todo';
+let formSubs = []; // salinan sub-tugas yang sedang diedit di form
 
 function buildTypePicker() {
   $('#typePicker').innerHTML = cats.map((c) =>
@@ -423,13 +431,55 @@ function setFormType(type, autoRepeat, sub = '') {
   syncRepeat();
 }
 
-function syncRepeat() { $('#untilWrap').style.visibility = form.weekly.checked ? 'visible' : 'hidden'; }
+function syncRepeat() {
+  $('#untilWrap').style.visibility = form.weekly.checked ? 'visible' : 'hidden';
+  // Sub-tugas untuk pekerjaan sekali jalan, bukan jadwal rutin
+  $('#subtaskWrap').hidden = form.weekly.checked;
+}
+
+function renderFormSubs() {
+  const done = formSubs.filter((x) => x.done).length;
+  $('#subtaskCount').textContent = formSubs.length ? `${done}/${formSubs.length}` : '';
+  $('#subtaskList').innerHTML = formSubs.map((x, i) => `<li data-i="${i}">
+    <input type="checkbox" ${x.done ? 'checked' : ''} aria-label="Selesai">
+    <input class="st-text" value="${esc(x.text)}" maxlength="120" aria-label="Sub-tugas">
+    <button type="button" class="icon-btn small" data-up aria-label="Naikkan">&#8593;</button>
+    <button type="button" class="icon-btn small danger" data-rm aria-label="Hapus sub-tugas">&#215;</button>
+  </li>`).join('');
+}
+
+$('#subtaskInput').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault(); // jangan submit form
+  const text = e.target.value.trim();
+  if (!text) return;
+  formSubs.push({ id: uid(), text, done: false });
+  e.target.value = '';
+  renderFormSubs();
+});
+$('#subtaskList').addEventListener('input', (e) => {
+  const li = e.target.closest('li');
+  if (li && e.target.classList.contains('st-text')) formSubs[li.dataset.i].text = e.target.value;
+});
+$('#subtaskList').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+$('#subtaskList').addEventListener('click', (e) => {
+  const li = e.target.closest('li');
+  if (!li) return;
+  const i = Number(li.dataset.i);
+  if (e.target.matches('input[type="checkbox"]')) formSubs[i].done = e.target.checked;
+  else if (e.target.closest('[data-rm]')) formSubs.splice(i, 1);
+  else if (e.target.closest('[data-up]') && i > 0) [formSubs[i - 1], formSubs[i]] = [formSubs[i], formSubs[i - 1]];
+  else return;
+  renderFormSubs();
+});
 
 function openForm(it = null, occurrence = selected, preset = {}) {
   form.reset();
   editing = it ? { id: it.id, occurrence } : null;
   $('#formTitle').textContent = it ? 'Edit item' : 'Tambah item';
   $('#deleteBtn').hidden = !it;
+  formSubs = it && it.subtasks ? it.subtasks.map((x) => ({ ...x })) : [];
+  renderFormSubs();
   if (it) {
     form.title.value = it.title;
     form.date.value = it.date;
@@ -465,7 +515,12 @@ form.addEventListener('submit', (e) => {
     notes: form.notes.value.trim(),
     weekly: form.weekly.checked,
     until: form.weekly.checked ? form.until.value : '',
+    subtasks: formSubs.map((x) => ({ ...x, text: x.text.trim() })).filter((x) => x.text),
   };
+  // Sub-tugas yang belum di-Enter tetap ikut tersimpan
+  const pending = $('#subtaskInput').value.trim();
+  if (pending && !data.weekly) data.subtasks.push({ id: uid(), text: pending, done: false });
+  $('#subtaskInput').value = '';
   if (data.until && data.until < data.date) { toast('"Sampai tanggal" harus setelah tanggal mulai.'); return; }
   let id;
   if (editing) {
@@ -542,6 +597,19 @@ function onListClick(e) {
   if (!li) return;
   const it = items.find((x) => x.id === li.dataset.id);
   if (!it) return;
+  if (e.target.classList.contains('sub-check')) {
+    const st = (it.subtasks || []).find((x) => x.id === e.target.dataset.sub);
+    if (!st) return;
+    st.done = e.target.checked;
+    save();
+    render();
+    if (st.done && it.subtasks.every((x) => x.done) && !isDone(it, li.dataset.key)) {
+      toast('Semua sub-tugas selesai. Jangan lupa centang tugas utamanya.');
+    }
+    return;
+  }
+  // Klik teks sub-tugas diteruskan browser ke checkbox-nya, jangan buka form
+  if (e.target.closest('.subs')) return;
   if (e.target.matches('input[type="checkbox"]')) {
     setDone(it, li.dataset.key, e.target.checked);
     save();
