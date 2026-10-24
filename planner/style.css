@@ -503,6 +503,79 @@ dialog label.important-check { font-weight: 600; }
 .form-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
 .spacer { flex: 1; }
 
+/* ---------- Mata kuliah ---------- */
+.card.pad { padding: 16px 18px; }
+.card h3 { margin: 0 0 10px; font-size: 1rem; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.sec-head h3 { margin: 0; }
+.empty-state { padding: 22px 24px; max-width: 640px; }
+.empty-state h3 { font-size: 1.1rem; }
+.empty-state p, .empty-state li { color: var(--muted); line-height: 1.6; }
+.empty-state ul { margin: 0 0 16px; padding-left: 20px; }
+
+.course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+.course-card {
+  text-align: left; cursor: pointer; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-top: 5px solid var(--c);
+  border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.course-card:hover { border-color: var(--c); }
+.cc-head { display: flex; flex-direction: column; gap: 2px; }
+.cc-head b { font-size: 1.05rem; }
+.cc-head span { font-size: .8rem; }
+.cc-row { display: flex; gap: 10px; font-size: .86rem; align-items: baseline; }
+.cc-label { width: 46px; flex-shrink: 0; font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+.cc-grade { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--border); font-size: .88rem; display: flex; align-items: center; gap: 6px; }
+.grade-letter {
+  display: inline-grid; place-items: center; min-width: 34px; height: 26px; padding: 0 6px;
+  border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 800;
+}
+.archive { margin-top: 22px; }
+.archive summary, .done-list summary { cursor: pointer; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+.done-list { margin-top: 12px; }
+
+.course-hero { border-left: 5px solid var(--c); padding: 2px 0 2px 14px; margin-bottom: 16px; }
+.course-hero h2 { margin: 0 0 4px; font-size: 1.4rem; }
+.course-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.course-col { display: flex; flex-direction: column; gap: 16px; }
+.course-tag {
+  font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--cc); color: var(--cc);
+}
+.inline-field { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+.inline-field select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
+
+.grade-wrap { overflow-x: auto; }
+.grade-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.grade-table th { text-align: left; font-size: .72rem; text-transform: uppercase; color: var(--muted); padding: 0 4px 6px; font-weight: 700; }
+.grade-table td { padding: 3px 4px; }
+.grade-table td:nth-child(2), .grade-table td:nth-child(3) { width: 92px; }
+.grade-table td:last-child { width: 36px; }
+.grade-table input, .link-add input, .course-notes {
+  width: 100%; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: .92rem; min-width: 0;
+}
+.grade-table input:focus, .link-add input:focus, .course-notes:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.grade-summary { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: .9rem; line-height: 1.5; }
+.grade-summary p { margin: 0 0 8px; }
+.grade-big { display: flex; align-items: center; gap: 8px; font-weight: 600; flex-wrap: wrap; }
+.grade-summary .need { color: var(--accent); font-size: 1.05rem; }
+.grade-summary .warn { color: var(--danger); }
+.grade-summary .ok { color: #10b981; }
+.need-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .8rem; }
+.need-chip { padding: 2px 9px; border-radius: 999px; background: var(--surface-2); font-weight: 600; }
+.need-chip.on { background: var(--accent); color: var(--accent-text); }
+
+.link-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.link-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.link-list a { color: var(--accent); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-add { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 6px; }
+.course-notes { resize: vertical; font-family: inherit; line-height: 1.5; }
+.form-note { font-size: .8rem; color: var(--muted); margin: 0; line-height: 1.5; }
+.color-field { flex: 0 0 72px !important; }
+dialog .color-field input { height: 40px; padding: 2px !important; cursor: pointer; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;
@@ -516,6 +589,7 @@ dialog label.important-check { font-weight: 600; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
+  .course-layout { grid-template-columns: minmax(0, 1fr); }
   /* Tablet dan HP: navigasi utama pindah ke bawah seperti aplikasi pada umumnya */
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   .mainnav {
@@ -535,6 +609,7 @@ dialog label.important-check { font-weight: 600; }
   .topbar { flex-wrap: wrap; padding: 10px 16px; }
   .seg { order: 5; width: 100%; }
   .page { padding: 12px 16px; }
+  .link-add { grid-template-columns: 1fr; }
   .alerts { top: auto; bottom: calc(80px + env(safe-area-inset-bottom)); left: 16px; right: 16px; width: auto; z-index: 40; }
   .seg button { flex: 1; }
   .day-view { padding: 14px; }

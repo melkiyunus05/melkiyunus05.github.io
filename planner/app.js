@@ -429,6 +429,8 @@ function itemHtml(it, k, opts = {}) {
   const done = isDone(it, k);
   const meta = [];
   meta.push(`<span class="badge" style="--c:${t.color}">${esc(labelOf(it))}</span>`);
+  const course = !opts.hideCourse && typeof courseById === 'function' ? courseById(it.courseId) : null;
+  if (course) meta.push(`<span class="course-tag" style="--cc:${course.color}">${esc(course.code || course.name)}</span>`);
   if (it.time) meta.push(`<span>${it.time}${it.endTime ? ' - ' + it.endTime : ''}</span>`);
   if (it.place) meta.push(`<span>${esc(it.place)}</span>`);
   if (it.weekly) meta.push(`<span>Tiap ${DAYS[fromKey(it.date).getDay()]}</span>`);
@@ -540,6 +542,7 @@ function openForm(it = null, occurrence = selected, preset = {}) {
   $('#deleteBtn').hidden = !it;
   formSubs = it && it.subtasks ? it.subtasks.map((x) => ({ ...x })) : [];
   renderFormSubs();
+  fillCourseSelect(it ? it.courseId : preset.courseId);
   if (it) {
     form.title.value = it.title;
     form.date.value = it.date;
@@ -555,8 +558,11 @@ function openForm(it = null, occurrence = selected, preset = {}) {
   } else {
     form.date.value = preset.date || selected;
     form.time.value = preset.time || '';
-    const t = filter !== 'all' ? filter : formType;
+    const t = preset.type || (filter !== 'all' ? filter : formType);
     setFormType(cats.some((c) => c.id === t) ? t : cats[0].id, true);
+    if (preset.weekly !== undefined) { form.weekly.checked = preset.weekly; syncRepeat(); }
+    if (preset.title) form.title.value = preset.title;
+    if (preset.place) form.place.value = preset.place;
   }
   dialog.showModal();
   if (!it) form.title.focus();
@@ -576,6 +582,7 @@ form.addEventListener('submit', (e) => {
     place: form.place.value.trim(),
     notes: form.notes.value.trim(),
     weekly: form.weekly.checked,
+    courseId: form.course.value,
     important: form.important.checked,
     remind: form.remind.value === '' ? '' : Number(form.remind.value),
     updated: Date.now(), // pengingat yang waktunya sudah lewat sebelum disimpan tidak akan dibunyikan
@@ -946,7 +953,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -972,6 +979,12 @@ $('#importFile').addEventListener('change', async (e) => {
       saveCats();
       buildTypePicker();
       renderLegend();
+    }
+    if (Array.isArray(data.courses)) {
+      const byCourse = new Map(courses.map((c) => [c.id, c]));
+      for (const c of data.courses) if (c && c.id) byCourse.set(String(c.id), cleanCourse(c));
+      courses = [...byCourse.values()];
+      saveCourses();
     }
     if (data.focus && typeof data.focus === 'object') {
       for (const [d, list] of Object.entries(data.focus)) {

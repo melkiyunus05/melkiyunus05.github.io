@@ -117,6 +117,10 @@
         <select name="sub" id="subSelect"></select>
       </label>
 
+      <label id="courseWrap" hidden>Mata kuliah
+        <select name="course"></select>
+      </label>
+
       <label>Judul
         <input name="title" required maxlength="120" placeholder="mis. Laporan Praktikum Fisdas 2">
       </label>
@@ -205,6 +209,42 @@
       <div class="form-actions">
         <span class="spacer"></span>
         <button type="button" class="btn ghost" id="catCancel">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="courseDialog">
+    <form method="dialog" id="courseForm">
+      <h2 id="courseFormTitle">Tambah mata kuliah</h2>
+      <label>Nama mata kuliah
+        <input name="name" required maxlength="80" placeholder="mis. Fisika Material">
+      </label>
+      <div class="row">
+        <label>Kode
+          <input name="code" maxlength="20" placeholder="mis. SCFI603">
+        </label>
+        <label>SKS
+          <input name="sks" type="number" inputmode="numeric" min="0" max="24" placeholder="3">
+        </label>
+        <label class="color-field">Warna
+          <input name="color" type="color">
+        </label>
+      </div>
+      <label>Dosen
+        <input name="lecturer" maxlength="120" placeholder="mis. Dr. ...">
+      </label>
+      <label>Ruang
+        <input name="room" maxlength="80" placeholder="mis. Gedung B 201">
+      </label>
+      <p class="form-note" id="courseNewHint">Komponen nilai awal: Tugas 20%, Kuis 10%, UTS 35%, UAS 35%. Bisa kamu ubah sesuai kontrak kuliah. Jadwal atau tugas lama yang judulnya sama persis dengan nama matkul akan otomatis ditautkan.</p>
+      <label class="check" id="courseArchiveWrap">
+        <input type="checkbox" name="archived"> Arsipkan (semester sudah selesai)
+      </label>
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="courseDeleteBtn" hidden>Hapus</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="courseCancelBtn">Batal</button>
         <button type="submit" class="btn primary">Simpan</button>
       </div>
     </form>
