@@ -38,9 +38,12 @@
       <button data-mode="month">Bulan</button>
     </div>
     <div class="top-actions">
+      <button class="icon-btn cloud-btn" id="cloudBtn" data-state="off" title="Cloud belum terhubung" aria-label="Akun dan sinkronisasi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/></svg><i></i></button>
       <button class="icon-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
       <div class="menu" id="menu" hidden>
+        <button id="cloudMenuBtn">Akun & sinkronisasi</button>
         <button id="catBtn">Kelola kategori</button>
+        <button id="kindMenuBtn">Kelola jenis file</button>
         <button id="notifBtn">Aktifkan notifikasi</button>
         <button id="exportBtn">Ekspor backup (.json)</button>
         <button id="importBtn">Impor backup</button>
@@ -179,6 +182,11 @@
         <input id="subtaskInput" maxlength="120" placeholder="+ Tambah sub-tugas lalu tekan Enter (mis. Abstrak, Full paper, PPT)">
       </div>
 
+      <div class="subtasks">
+        <div class="sub-head">Lampiran</div>
+        <div id="attachBox"></div>
+      </div>
+
       <label>Catatan
         <textarea name="notes" rows="3" maxlength="2000" placeholder="Detail, syarat, link pengumpulan, dll."></textarea>
       </label>
@@ -302,6 +310,8 @@
         <input id="compCheckInput" maxlength="120" placeholder="+ Tambah lalu tekan Enter (mis. Scan KTM, Surat orisinalitas)">
       </div>
 
+      <div class="comp-files" id="compFiles"></div>
+
       <label>Catatan
         <textarea name="notes" rows="3" maxlength="3000" placeholder="Syarat, format karya, kontak panitia, dll."></textarea>
       </label>
@@ -325,6 +335,27 @@
     <option>Finalis</option><option>Semifinalis</option><option>Best paper</option><option>Tidak lolos</option>
   </datalist>
 
+  <dialog id="cloudDialog">
+    <form method="dialog" onsubmit="return false">
+      <h2>Akun & sinkronisasi</h2>
+      <div id="cloudBody"></div>
+    </form>
+  </dialog>
+
+  <dialog id="kindDialog">
+    <form method="dialog" id="kindForm">
+      <h2>Kelola jenis file</h2>
+      <p>File di halaman matkul dan lomba dikelompokkan sesuai jenis ini, dengan urutan yang sama.</p>
+      <ul class="kind-list" id="kindList"></ul>
+      <button type="button" class="btn" id="addKindBtn">+ Jenis baru</button>
+      <div class="form-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="kindCancel">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="alerts" id="alerts" aria-live="polite"></div>
 
   <div class="toast" id="toast" hidden></div>
@@ -333,6 +364,8 @@
   <script src="courses.js"></script>
   <script src="comps.js"></script>
   <script src="timer.js"></script>
+  <script src="files.js"></script>
+  <script src="cloud.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

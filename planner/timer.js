@@ -26,7 +26,7 @@ function readJSON(key, fallback) {
 }
 function writeJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 function saveTimer() { writeJSON(TIMER_KEY, timer); }
-function saveSessions() { writeJSON(SESSIONS_KEY, sessions); }
+function saveSessions() { writeJSON(SESSIONS_KEY, sessions); cloudDirty(); }
 
 function idleTimer(target = { kind: 'none' }, cycle = 0) {
   return { phase: 'focus', status: 'idle', duration: tset.focus * 60000, endsAt: 0, remaining: tset.focus * 60000, target, cycle };
@@ -450,6 +450,7 @@ timerPage.addEventListener('change', (e) => {
 });
 function applySettings() {
   writeJSON(TSET_KEY, tset);
+  cloudDirty();
   // Durasi baru langsung terlihat kalau timer belum berjalan
   if (timer.status === 'idle') { timer.duration = phaseMs('focus'); timer.remaining = timer.duration; saveTimer(); }
   render();
