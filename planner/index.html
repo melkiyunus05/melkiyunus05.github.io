@@ -35,6 +35,7 @@
       <button class="icon-btn" id="menuBtn" aria-label="Menu">&#8942;</button>
       <div class="menu" id="menu" hidden>
         <button id="catBtn">Kelola kategori</button>
+        <button id="notifBtn">Aktifkan notifikasi</button>
         <button id="exportBtn">Ekspor backup (.json)</button>
         <button id="importBtn">Impor backup</button>
         <button id="themeBtn">Ganti tema terang/gelap</button>
@@ -132,6 +133,20 @@
         <input name="place" maxlength="200" placeholder="mis. Gedung B 201 / link Zoom">
       </label>
 
+      <label>Pengingat
+        <select name="remind">
+          <option value="">Tidak ada</option>
+          <option value="0">Saat mulai</option>
+          <option value="10">10 menit sebelum</option>
+          <option value="30">30 menit sebelum</option>
+          <option value="60">1 jam sebelum</option>
+          <option value="180">3 jam sebelum</option>
+          <option value="1440">1 hari sebelum (H-1)</option>
+          <option value="4320">3 hari sebelum (H-3)</option>
+        </select>
+        <small class="field-hint">Muncul selama aplikasi terbuka atau berjalan di latar belakang. Untuk item tanpa jam, patokannya pukul 07.00.</small>
+      </label>
+
       <div class="row repeat-row">
         <label class="check">
           <input type="checkbox" name="weekly"> Ulangi tiap minggu
@@ -186,6 +201,8 @@
       </div>
     </form>
   </dialog>
+
+  <div class="alerts" id="alerts" aria-live="polite"></div>
 
   <div class="toast" id="toast" hidden></div>
 

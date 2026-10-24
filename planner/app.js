@@ -24,6 +24,8 @@ const THEME_KEY = 'elio-planner-theme';
 const MODE_KEY = 'elio-planner-mode';
 const FOCUS_KEY = 'elio-planner-focus-v1';
 const FOCUS_MAX = 3;
+const FIRED_KEY = 'elio-planner-fired-v1';
+const REMIND_LABELS = { 0: 'saat mulai', 10: '10 mnt', 30: '30 mnt', 60: '1 jam', 180: '3 jam', 1440: 'H-1', 4320: 'H-3' };
 const HOUR_PX = 48; // tinggi satu jam di tampilan mingguan
 const UPCOMING_DAYS = 14;
 const CHIPS_PER_CELL = 3;
@@ -417,6 +419,7 @@ function itemHtml(it, k, opts = {}) {
   if (subs.length) {
     meta.push(`<span class="prog" title="Sub-tugas selesai"><i><b style="width:${subDone / subs.length * 100}%"></b></i>${subDone}/${subs.length}</span>`);
   }
+  if (hasRemind(it)) meta.push(`<span title="Pengingat">&#128276; ${REMIND_LABELS[it.remind] || it.remind + ' mnt'}</span>`);
   if (opts.status === 'now') meta.unshift('<span class="status now">Sedang berlangsung</span>');
   if (opts.status === 'next') meta.unshift('<span class="status next">Berikutnya</span>');
   if (showCountdown) {
@@ -528,6 +531,7 @@ function openForm(it = null, occurrence = selected, preset = {}) {
     form.notes.value = it.notes || '';
     form.weekly.checked = !!it.weekly;
     form.important.checked = !!it.important;
+    form.remind.value = hasRemind(it) ? String(it.remind) : '';
     form.until.value = it.until || '';
     setFormType(it.type, false, it.sub);
   } else {
@@ -555,6 +559,8 @@ form.addEventListener('submit', (e) => {
     notes: form.notes.value.trim(),
     weekly: form.weekly.checked,
     important: form.important.checked,
+    remind: form.remind.value === '' ? '' : Number(form.remind.value),
+    updated: Date.now(), // pengingat yang waktunya sudah lewat sebelum disimpan tidak akan dibunyikan
     until: form.weekly.checked ? form.until.value : '',
     subtasks: formSubs.map((x) => ({ ...x, text: x.text.trim() })).filter((x) => x.text),
   };
@@ -739,6 +745,105 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'b') setMode('month');
 });
 
+// ---------- Pengingat ----------
+function hasRemind(it) { return it.remind !== undefined && it.remind !== null && it.remind !== ''; }
+function loadFired() {
+  try {
+    const data = JSON.parse(localStorage.getItem(FIRED_KEY)) || {};
+    const cutoff = Date.now() - 30 * 86400000;
+    for (const [key, t] of Object.entries(data)) if (t < cutoff) delete data[key];
+    return data;
+  } catch { return {}; }
+}
+let fired = loadFired();
+
+function remindAt(it, k) {
+  const d = fromKey(k);
+  const t = it.time || '07:00';
+  d.setHours(Number(t.slice(0, 2)), Number(t.slice(3, 5)), 0, 0);
+  return d.getTime() - Number(it.remind) * 60000;
+}
+
+function checkReminders() {
+  const now = Date.now();
+  let changed = false;
+  // H-3 paling jauh, jadi cukup periksa kemunculan sampai 4 hari ke depan
+  for (let i = -1; i <= 4; i++) {
+    const k = toKey(addDays(new Date(), i));
+    for (const it of itemsOn(k)) {
+      if (!hasRemind(it) || isDone(it, k)) continue;
+      const at = remindAt(it, k);
+      const key = `${it.id}|${k}|${it.remind}`;
+      // Kalau aplikasi baru dibuka, pengingat yang terlewat kurang dari 12 jam tetap ditampilkan
+      if (at <= now && now - at < 12 * 3600000 && at > (it.updated || 0) && !fired[key]) {
+        fired[key] = now;
+        changed = true;
+        notify(it, k, key);
+      }
+    }
+  }
+  if (changed) try { localStorage.setItem(FIRED_KEY, JSON.stringify(fired)); } catch {}
+}
+
+function notify(it, k, tag) {
+  const when = relDay(k) + (it.time ? `, pukul ${it.time}` : '');
+  const body = `${labelOf(it)} · ${when}${it.place ? ' · ' + it.place : ''}`;
+  showAlert(it, k, body);
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const opts = { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' };
+  // Notifikasi lewat service worker lebih andal di Android dan aplikasi yang di-install
+  (navigator.serviceWorker ? navigator.serviceWorker.getRegistration() : Promise.resolve(null))
+    .then((reg) => reg ? reg.showNotification(it.title, opts) : new Notification(it.title, opts))
+    .catch(() => { try { new Notification(it.title, opts); } catch {} });
+}
+
+function showAlert(it, k, body) {
+  const el = document.createElement('div');
+  el.className = 'alert';
+  el.style.setProperty('--c', cat(it.type).color);
+  el.innerHTML = `<div class="alert-icon">&#128276;</div>
+    <div class="alert-body"><b>${esc(it.title)}</b><span>${esc(body)}</span></div>
+    <div class="alert-actions"><button class="btn small" data-open>Buka</button><button class="btn ghost small" data-close>Tutup</button></div>`;
+  el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-open]')) {
+      const cur = items.find((x) => x.id === it.id);
+      if (cur) openForm(cur, k);
+      el.remove();
+    } else if (e.target.closest('[data-close]')) el.remove();
+  });
+  $('#alerts').appendChild(el);
+}
+
+function updateNotifBtn() {
+  const b = $('#notifBtn');
+  if (!('Notification' in window)) { b.textContent = 'Notifikasi: tidak didukung browser ini'; return; }
+  b.textContent = { granted: 'Notifikasi: aktif (kirim tes)', denied: 'Notifikasi: diblokir browser', default: 'Aktifkan notifikasi' }[Notification.permission];
+}
+
+async function askNotifPermission() {
+  if (!('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch {}
+  }
+  updateNotifBtn();
+  return Notification.permission;
+}
+
+$('#notifBtn').addEventListener('click', async () => {
+  menu.hidden = true;
+  const perm = await askNotifPermission();
+  if (perm === 'granted') {
+    notify({ id: 'test', title: 'Notifikasi aktif', type: cats[0].id, time: '' }, toKey(new Date()), 'test');
+  } else if (perm === 'denied') {
+    toast('Notifikasi diblokir. Izinkan lewat pengaturan situs di browser.');
+  } else if (perm === 'unsupported') {
+    toast('Browser ini tidak mendukung notifikasi. Pengingat tetap muncul di dalam aplikasi.');
+  }
+});
+
+// Minta izin notifikasi saat pertama kali memasang pengingat
+form.remind.addEventListener('change', () => { if (form.remind.value !== '') askNotifPermission(); });
+
 // ---------- Kelola kategori ----------
 const catDialog = $('#catDialog');
 
@@ -900,6 +1005,10 @@ buildTypePicker();
 renderLegend();
 applyMode();
 render();
+updateNotifBtn();
+checkReminders();
+setInterval(checkReminders, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
 
 // Ganti hari otomatis kalau aplikasi dibiarkan terbuka melewati tengah malam
 let lastDay = toKey(new Date());
