@@ -14,5 +14,7 @@ Buka di https://melkiyunus05.github.io/planner/ lalu "Install" / "Add to Home Sc
 - Kategori bisa diatur sendiri lewat menu "Kelola kategori" (nama, warna, urutan, jenis). Bawaan: to do, deadline, ujian, jadwal kuliah, asistensi, acara, pengumuman
 - Jadwal berulang tiap minggu (untuk kuliah dan asistensi)
 - Tab "Mendatang" berisi hitung mundur H-n untuk 14 hari ke depan
-- Data tersimpan di perangkat (localStorage), bisa ekspor/impor backup JSON
+- File (PDF, dokumen, gambar) yang dilampirkan ke tugas, matkul, dan lomba, dikelompokkan per jenis yang bisa diatur sendiri
+- Sinkronisasi laptop dan tablet lewat Supabase (gratis). Panduan pengaturan: [planner/SETUP-CLOUD.md](planner/SETUP-CLOUD.md)
+- Data juga tersimpan di perangkat (bisa offline), plus ekspor/impor backup JSON
 - Bisa dipakai offline

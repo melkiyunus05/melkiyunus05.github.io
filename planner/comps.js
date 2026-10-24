@@ -56,6 +56,7 @@ function loadComps() {
 function saveComps() {
   try { localStorage.setItem(COMPS_KEY, JSON.stringify(comps)); }
   catch { toast('Gagal menyimpan data lomba.'); }
+  cloudDirty();
 }
 function compById(id) { return id ? comps.find((c) => c.id === id) : null; }
 
@@ -232,6 +233,7 @@ function openCompForm(c = null, focusResult = false) {
   syncResultField();
   renderDraftDates();
   renderDraftChecks();
+  renderCompFiles();
   compDialog.showModal();
   if (focusResult) compForm.result.focus();
   else if (!c) compForm.name.focus();

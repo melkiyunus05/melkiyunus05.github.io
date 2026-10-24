@@ -73,9 +73,12 @@ function load() {
     return Array.isArray(data) ? data : [];
   } catch { return []; }
 }
+// Setiap fungsi simpan memberi tahu modul cloud (cloud.js) supaya perubahan ikut tersinkron
+function cloudDirty() { if (typeof syncDirty === 'function') syncDirty(); }
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(items)); }
   catch { toast('Gagal menyimpan. Penyimpanan browser penuh atau diblokir.'); }
+  cloudDirty();
 }
 function cleanCat(c) {
   return {
@@ -97,6 +100,7 @@ function loadCats() {
 function saveCats() {
   try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); }
   catch { toast('Gagal menyimpan kategori.'); }
+  cloudDirty();
 }
 function loadFocus() {
   try {
@@ -108,7 +112,7 @@ function loadFocus() {
     return data;
   } catch { return {}; }
 }
-function saveFocus() { try { localStorage.setItem(FOCUS_KEY, JSON.stringify(focus)); } catch {} }
+function saveFocus() { try { localStorage.setItem(FOCUS_KEY, JSON.stringify(focus)); } catch {} cloudDirty(); }
 function focusOn(d) { return (focus[d] || []).filter((f) => items.some((it) => it.id === f.id)); }
 function isFocused(d, id, k) { return focusOn(d).some((f) => f.id === id && f.k === k); }
 function toggleFocus(d, id, k) {
@@ -442,6 +446,8 @@ function itemHtml(it, k, opts = {}) {
   if (subs.length) {
     meta.push(`<span class="prog" title="Sub-tugas selesai"><i><b style="width:${subDone / subs.length * 100}%"></b></i>${subDone}/${subs.length}</span>`);
   }
+  const nFiles = typeof filesForItem === 'function' ? filesForItem(it.id).length : 0;
+  if (nFiles) meta.push(`<span title="Lampiran">&#128206; ${nFiles}</span>`);
   const focusMin = typeof itemMinutes === 'function' ? itemMinutes(it.id) : 0;
   if (focusMin >= 1) meta.push(`<span title="Total waktu fokus">&#9201; ${fmtDur(focusMin)}</span>`);
   if (hasRemind(it)) meta.push(`<span title="Pengingat">&#128276; ${REMIND_LABELS[it.remind] || it.remind + ' mnt'}</span>`);
@@ -550,6 +556,7 @@ function openForm(it = null, occurrence = selected, preset = {}) {
   renderFormSubs();
   fillCourseSelect(it ? it.courseId : preset.courseId);
   compFormNote(it);
+  resetAttachments();
   if (it) {
     form.title.value = it.title;
     form.date.value = it.date;
@@ -618,6 +625,7 @@ form.addEventListener('submit', (e) => {
   view = startOfMonth(fromKey(selected));
   render();
   toast(editing ? 'Perubahan disimpan' : 'Item ditambahkan');
+  uploadStaged(id);
 });
 
 $('#cancelBtn').addEventListener('click', () => dialog.close());
@@ -635,11 +643,12 @@ $('#deleteBtn').addEventListener('click', async () => {
     if (choice === 'cancel') return;
     if (choice === 'one') {
       it.skip = [...new Set([...(it.skip || []), editing.occurrence])];
-    } else items = items.filter((x) => x.id !== it.id);
+    } else { items = items.filter((x) => x.id !== it.id); onItemDeletedFiles(it); }
   } else {
     if (!confirm(`Hapus "${it.title}"?`)) return;
     items = items.filter((x) => x.id !== it.id);
     if (it.compId) onCompItemDeleted(it);
+    onItemDeletedFiles(it);
   }
   save();
   dialog.close();
@@ -967,7 +976,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, fileKinds, files, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -1005,6 +1014,19 @@ $('#importFile').addEventListener('change', async (e) => {
       for (const c of data.comps) if (c && c.id) byComp.set(String(c.id), cleanComp(c));
       comps = [...byComp.values()];
       saveComps();
+    }
+    if (Array.isArray(data.fileKinds) && data.fileKinds.length) {
+      const byKind = new Map(fileKinds.map((k) => [k.id, k]));
+      for (const k of data.fileKinds) if (k && k.id && k.label) byKind.set(String(k.id), { id: String(k.id), label: String(k.label).slice(0, 40) });
+      fileKinds = [...byKind.values()];
+      saveFileKinds();
+    }
+    // Hanya data file (nama, jenis, tautan) yang ada di backup; isinya tetap di cloud
+    if (Array.isArray(data.files)) {
+      const byFile = new Map(files.map((f) => [f.id, f]));
+      for (const f of data.files) if (f && f.id && f.path) byFile.set(String(f.id), f);
+      files = [...byFile.values()];
+      saveFiles();
     }
     if (Array.isArray(data.sessions)) {
       const bySess = new Map(sessions.map((x) => [x.id, x]));

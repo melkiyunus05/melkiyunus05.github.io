@@ -57,6 +57,7 @@ function loadCourses() {
 function saveCourses() {
   try { localStorage.setItem(COURSES_KEY, JSON.stringify(courses)); }
   catch { toast('Gagal menyimpan data matkul.'); }
+  cloudDirty();
 }
 function courseById(id) { return id ? courses.find((c) => c.id === id) : null; }
 
@@ -217,6 +218,7 @@ function courseDetailHtml(c) {
           ${done.length ? `<details class="done-list"><summary>Selesai (${done.length})</summary>
             <ul class="items">${done.map((it) => itemHtml(it, it.date, { hideCourse: true })).join('')}</ul></details>` : ''}
         </section>
+        <section class="card pad">${filesBoxHtml({ courseId: c.id }, filesForCourse(c.id))}</section>
       </div>
       <div class="course-col">
         <section class="card pad">

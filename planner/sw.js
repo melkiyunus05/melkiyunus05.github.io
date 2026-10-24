@@ -1,5 +1,5 @@
 // Naikkan versi ini setiap kali file aplikasi diubah supaya cache diperbarui
-const CACHE = 'elio-planner-v5';
+const CACHE = 'elio-planner-v6';
 const ASSETS = [
   './',
   'index.html',
@@ -8,6 +8,8 @@ const ASSETS = [
   'courses.js',
   'comps.js',
   'timer.js',
+  'files.js',
+  'cloud.js',
   'main.js',
   'manifest.webmanifest',
   'icons/icon.svg',
@@ -30,6 +32,10 @@ self.addEventListener('activate', (e) => {
 // Network first: selalu coba versi terbaru, pakai cache kalau offline
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Hanya file aplikasi dan library dari CDN yang disimpan untuk offline.
+  // Data dan file dari Supabase selalu diambil langsung supaya tidak basi dan tidak memenuhi cache.
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin && !/(^|\.)(jsdelivr\.net|unpkg\.com)$/.test(url.hostname)) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {

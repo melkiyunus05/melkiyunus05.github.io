@@ -1,5 +1,5 @@
 'use strict';
-// Dimuat paling akhir, setelah app.js, courses.js, comps.js, dan timer.js
+// Dimuat paling akhir, setelah app.js, courses.js, comps.js, timer.js, files.js, dan cloud.js
 
 // ---------- Init ----------
 try { applyTheme(localStorage.getItem(THEME_KEY)); } catch {}
@@ -10,6 +10,7 @@ tickTimer(); // selesaikan fase timer yang habis saat aplikasi tertutup
 setPage(page);
 setInterval(tickTimer, 1000);
 updateNotifBtn();
+initCloud();
 checkReminders();
 setInterval(checkReminders, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminders(); });
