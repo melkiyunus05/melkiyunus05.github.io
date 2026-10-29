@@ -7,6 +7,8 @@ Buka di https://melkiyunus05.github.io/planner/ lalu "Install" / "Add to Home Sc
 
 - Tiga tampilan: Hari (jadwal, tugas, dan Fokus hari ini), Minggu (timetable), dan Bulan
 - Sub-tugas dengan progress, tanda penting, dan Fokus hari ini (maksimal 3)
+- To-do harian dan Rencana kerja yang dicicil beberapa hari (sesi per hari, input cepat gaya catatan WA: `Modul 3 TP: Sen 1, Sel 1, Rab 2`), dengan batas beban harian dan pindahan to-do kemarin
+- Jam harian berbentuk jam dinding (dua cincin 12 jam) dengan agenda, slot kosong, dan atur sesi otomatis
 - Pengingat (selama aplikasi terbuka atau berjalan di latar belakang)
 - Halaman Mata Kuliah: jadwal, tugas/ujian, kalkulator nilai (skala UI) dan target, IP perkiraan, link, catatan
 - Timer fokus (Pomodoro) yang terhubung ke tugas dan matkul, dengan statistik harian, mingguan, dan per matkul

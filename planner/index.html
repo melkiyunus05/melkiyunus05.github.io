@@ -44,6 +44,7 @@
         <button id="cloudMenuBtn">Akun & sinkronisasi</button>
         <button id="catBtn">Kelola kategori</button>
         <button id="kindMenuBtn">Kelola jenis file</button>
+        <button id="daySetMenuBtn">Jam tidur & batas beban</button>
         <button id="notifBtn">Aktifkan notifikasi</button>
         <button id="exportBtn">Ekspor backup (.json)</button>
         <button id="importBtn">Impor backup</button>
@@ -356,6 +357,97 @@
     </form>
   </dialog>
 
+  <dialog id="planDialog" class="wide">
+    <form method="dialog" id="planForm">
+      <h2 id="planFormTitle">Rencana kerja baru</h2>
+      <div class="parse-box">
+        <label>Ketik cepat (gaya catatan WA)
+          <input name="quick" maxlength="300" autocomplete="off" placeholder="Modul 3 TP: Sen 1, Sel 1, Rab 2, Kam 1">
+        </label>
+        <div class="parse-msg" id="planParseMsg"></div>
+      </div>
+      <div class="row">
+        <label>Judul
+          <input name="title" maxlength="120" placeholder="mis. Belajar Kuis Bab 10 Medel">
+        </label>
+        <label>Tautkan ke tugas / ujian (opsional)
+          <select name="link"></select>
+        </label>
+      </div>
+      <div>
+        <div class="sub-head plan-days-head">
+          <span>Jatah per hari <span class="muted">· + sesi untuk memecah, misalnya 2 jam + 1 jam + 1 jam</span></span>
+          <span class="week-nav"><button type="button" class="icon-btn small" id="planPrev" aria-label="7 hari sebelumnya">&#8249;</button><button type="button" class="icon-btn small" id="planNext" aria-label="7 hari berikutnya">&#8250;</button></span>
+        </div>
+        <div class="day-rows" id="planDays"></div>
+        <p class="form-note">Angka di kanan adalah total beban hari itu setelah rencana ini disimpan. Kuning: mulai batas bawah, merah: melewati batas atas (atur di menu &#8942;).</p>
+      </div>
+      <div class="total-line"><span>Total</span><span id="planTotal"></span></div>
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="planDeleteBtn" hidden>Hapus</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="planCancel">Batal</button>
+        <button type="submit" class="btn primary">Simpan rencana</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sessDialog">
+    <form method="dialog" id="sessForm">
+      <h2 id="sessTitle">Sesi</h2>
+      <p id="sessSub"></p>
+      <div class="row">
+        <label>Jam mulai (opsional)
+          <input type="time" name="time">
+        </label>
+        <label>Durasi
+          <select name="dur"></select>
+        </label>
+      </div>
+      <button type="button" class="link-btn align-start" id="sessClearTime">Hapus jam (kembalikan ke "Belum diatur jamnya")</button>
+      <label class="check"><input type="checkbox" name="done"> Tandai selesai</label>
+      <div class="form-actions">
+        <button type="button" class="btn danger" id="sessDelete">Hapus sesi</button>
+        <button type="button" class="btn ghost" id="sessEditPlan">Edit rencana</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="sessPlay">&#9654; Mulai timer</button>
+        <button type="button" class="btn ghost" id="sessCancel">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="carryDialog">
+    <form method="dialog" id="carryForm">
+      <h2>Pindahkan ke hari ini</h2>
+      <p>Pilih to-do yang mau dipindahkan. Yang tidak dipilih tetap di tanggal aslinya.</p>
+      <ul class="carry-list" id="carryList"></ul>
+      <div class="form-actions"><span class="spacer"></span>
+        <button type="button" class="btn ghost" id="carryCancel">Batal</button>
+        <button type="submit" class="btn primary">Pindahkan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="daySetDialog">
+    <form method="dialog" id="daySetForm">
+      <h2>Jam tidur & batas beban</h2>
+      <p>Jam tidur diarsir di Jam harian dan tidak dipakai saat mengatur sesi otomatis.</p>
+      <div class="row">
+        <label>Mulai tidur<input type="time" name="sleepStart" required></label>
+        <label>Bangun<input type="time" name="sleepEnd" required></label>
+      </div>
+      <div class="row">
+        <label>Batas bawah (jam, kuning)<input type="number" name="loadWarn" min="1" max="16" step="0.5"></label>
+        <label>Batas atas (jam, merah)<input type="number" name="loadMax" min="1" max="18" step="0.5"></label>
+      </div>
+      <div class="form-actions"><span class="spacer"></span>
+        <button type="button" class="btn ghost" id="daySetCancel">Batal</button>
+        <button type="submit" class="btn primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="alerts" id="alerts" aria-live="polite"></div>
 
   <div class="toast" id="toast" hidden></div>
@@ -364,6 +456,8 @@
   <script src="courses.js"></script>
   <script src="comps.js"></script>
   <script src="timer.js"></script>
+  <script src="plans.js"></script>
+  <script src="clock.js"></script>
   <script src="files.js"></script>
   <script src="cloud.js"></script>
   <script src="main.js"></script>

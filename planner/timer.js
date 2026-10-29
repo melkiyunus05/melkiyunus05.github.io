@@ -57,14 +57,26 @@ function targetInfo(t = timer.target) {
     const c = courseById(t.id);
     if (c) return { title: `Belajar ${c.name}`, itemId: '', k: '', courseId: c.id, color: c.color };
   }
+  if (t.kind === 'session') {
+    const p = planById(t.id);
+    const d = p && planDay(p, t.k);
+    const i = d ? d.sessions.findIndex((x) => x.id === t.s) : -1;
+    if (i >= 0) {
+      const link = p.linkId && items.find((x) => x.id === p.linkId);
+      return { title: `${p.title} · Sesi ${i + 1}`, itemId: link ? link.id : '', k: link ? link.date : '', courseId: link ? link.courseId || '' : '',
+        color: planColor(p), planId: p.id, sessId: t.s, planDate: t.k };
+    }
+  }
   return { title: 'Fokus tanpa tugas', itemId: '', k: '', courseId: '', color: 'var(--accent)' };
 }
 function targetValue(t) {
+  if (t.kind === 'session') return `sess:${t.id}|${t.k}|${t.s}`;
   return t.kind === 'item' ? `item:${t.id}|${t.k}` : t.kind === 'course' ? `course:${t.id}` : '';
 }
 function parseTarget(v) {
   if (v.startsWith('item:')) { const [id, k] = v.slice(5).split('|'); return { kind: 'item', id, k }; }
   if (v.startsWith('course:')) return { kind: 'course', id: v.slice(7) };
+  if (v.startsWith('sess:')) { const [id, k, s] = v.slice(5).split('|'); return { kind: 'session', id, k, s }; }
   return { kind: 'none' };
 }
 
@@ -123,9 +135,11 @@ function logSession(ms, endTs) {
   const info = targetInfo();
   sessions.push({
     id: uid(), start: endTs - ms, end: endTs, min: Math.round(ms / 6000) / 10,
-    title: info.title, itemId: info.itemId, k: info.k, courseId: info.courseId,
+    title: info.title, itemId: info.itemId, k: info.planId ? info.planDate : info.k, courseId: info.courseId,
+    planId: info.planId || '', sessId: info.sessId || '',
   });
   saveSessions();
+  onFocusLogged(sessions[sessions.length - 1]);
 }
 
 // Dipanggil tiap detik. Kalau fase sudah habis (termasuk saat aplikasi baru dibuka lagi), lanjutkan siklusnya.
@@ -287,6 +301,12 @@ function targetOptions() {
 
   const fl = focusOn(today).map((f) => ({ it: items.find((x) => x.id === f.id), k: f.k })).filter((f) => f.it && !isDone(f.it, f.k));
   if (fl.length) groups.push(['Fokus hari ini', fl.map((f) => opt({ kind: 'item', id: f.it.id, k: f.k }, f.it.title))]);
+
+  const sessOpts = [];
+  for (const p of plansOn(today)) planDay(p, today).sessions.forEach((x, i) => {
+    if (!x.done && sessDoneMin(x) < x.min) sessOpts.push(opt({ kind: 'session', id: p.id, k: today, s: x.id }, `${p.title} · Sesi ${i + 1} (${fmtH(x.min)})`));
+  });
+  if (sessOpts.length) groups.push(['Rencana hari ini', sessOpts]);
 
   const tasks = items.filter((it) => !it.weekly && cat(it.type).checkable && !it.done && it.date <= limit)
     .sort((a, b) => a.date.localeCompare(b.date))
