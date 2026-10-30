@@ -40,9 +40,16 @@ const SYNC_COLLECTIONS = {
     apply: (l) => { focus = Object.fromEntries(l.filter((r) => Array.isArray(r.list)).map((r) => [r.id, r.list])); saveFocus(); },
   },
   settings: {
-    records: () => [{ id: 'timer', ...tset }],
-    apply: (l) => { const t = l.find((r) => r.id === 'timer'); if (t) { const { id, ...rest } = t; tset = { ...DEFAULT_TSET, ...rest }; writeJSON(TSET_KEY, tset); } },
+    records: () => [{ id: 'timer', ...tset }, { id: 'day', ...dset }],
+    apply: (l) => {
+      const t = l.find((r) => r.id === 'timer');
+      if (t) { const { id, ...rest } = t; tset = { ...DEFAULT_TSET, ...rest }; writeJSON(TSET_KEY, tset); }
+      const d = l.find((r) => r.id === 'day');
+      if (d) { const { id, ...rest } = d; dset = { ...DEFAULT_DSET, ...rest }; writeJSON(DSET_KEY, dset); }
+    },
   },
+  todos: { records: () => todos, apply: (l) => { todos = l; saveTodos(); } },
+  plans: { records: () => plans, apply: (l) => { plans = l; savePlans(); } },
   fileKinds: { records: () => ordered(fileKinds), apply: (l) => { if (l.length) { fileKinds = unordered(l); saveFileKinds(); } } },
   files: { records: () => files, apply: (l) => { files = l; saveFiles(); } },
 };

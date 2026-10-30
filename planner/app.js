@@ -320,12 +320,23 @@ function renderDayView() {
   const fDone = focusItems.filter((f) => isDone(f.it, f.k)).length;
   const fTitle = `Fokus${k === today ? ' hari ini' : ''} <span class="focus-count">${fl.length ? `${fDone}/${fl.length} selesai` : `maks ${FOCUS_MAX}`}</span>`;
   const fEmpty = `Pilih maksimal ${FOCUS_MAX} hal terpenting untuk diselesaikan. Tekan <span class="focus-icon">&#9678;</span> pada tugas mana pun, termasuk deadline di daftar Mendatang.`;
+  // Urutan: pindahan to-do kemarin, Jam harian (jadwal + sesi berjam), Fokus, To-do, lalu tugas tanpa jam
+  const focusedIds = new Set(fl.filter((f) => f.k === k).map((f) => f.id));
+  const q = $('#quickTodo');
+  const draft = q ? q.value : '';
+  const hadFocus = document.activeElement === q;
   $('#dvBody').innerHTML =
+    carryBannerHtml(k) +
+    clockCardHtml(k, focusedIds, status) +
     `<div class="focus-box${fl.length && fDone === fl.length ? ' all-done' : ''}">` +
     section(fTitle, focusItems.map((f) => itemHtml(f.it, f.k, { focusDate: k, countdown: f.k !== k })), fEmpty) +
     (fl.length && fDone === fl.length ? '<p class="focus-done">Semua fokus selesai. Mantap!</p>' : '') + '</div>' +
-    section('Jadwal', timed.map((it) => itemHtml(it, k, { status: status.get(it.id), focusDate: k })), 'Tidak ada jadwal berjam di hari ini.') +
+    todoBoxHtml(k) +
     section('Tugas dan lainnya', untimed.map((it) => itemHtml(it, k, { focusDate: k })), 'Tidak ada tugas tanpa jam di hari ini.');
+  // Ketikan di kolom to-do tidak hilang saat tampilan diperbarui
+  const q2 = $('#quickTodo');
+  if (q2 && draft) q2.value = draft;
+  if (q2 && hadFocus) q2.focus();
 }
 
 function renderWeek() {
@@ -340,10 +351,17 @@ function renderWeek() {
     minH = Math.min(minH, Math.floor(toMin(it.time) / 60));
     maxH = Math.max(maxH, Math.ceil(Math.min(endMin(it), 1440) / 60));
   }
+  const sessBlocks = keys.map((k) => dayBlocks(k).filter((b) => b.kind === 'sess'));
+  for (const l of sessBlocks) for (const b of l) {
+    minH = Math.min(minH, Math.floor(b.s / 60));
+    maxH = Math.max(maxH, Math.ceil(b.e / 60));
+  }
   const hours = maxH - minH;
 
   let head = '<div class="wk-corner"></div>';
   let allday = '<div class="wk-label">Tanpa jam</div>';
+  let loadRow = '<div class="wk-label">Beban</div>';
+  let planRow = '<div class="wk-label">Rencana</div>';
   let cols = '';
   keys.forEach((k, i) => {
     const d = fromKey(k);
@@ -351,7 +369,15 @@ function renderWeek() {
     head += `<button type="button" class="wk-day ${cls}" data-day="${k}"><span>${DAYS[d.getDay()].slice(0, 3)}</span><b>${d.getDate()}</b></button>`;
     allday += `<div class="wk-allday ${cls}">${lists[i].filter((it) => !it.time).map((it) =>
       `<div class="chip${isDone(it, k) ? ' done' : ''}" style="--c:${cat(it.type).color}" data-id="${it.id}" data-key="${k}">${it.important ? '&#9733; ' : ''}${esc(it.title)}</div>`).join('')}</div>`;
-    cols += `<div class="wk-col ${cls}" data-key="${k}">${weekEvents(lists[i].filter((it) => it.time), k, minH)}`;
+    const load = dayLoad(k);
+    loadRow += `<div class="wk-load ${loadLevel(load)}" title="Total jam rencana kerja">${load ? fmtShort(load) : ''}</div>`;
+    planRow += `<div class="wk-plan ${cls}">${plansOn(k).map((p) => {
+      const ss = planDay(p, k).sessions;
+      const { i: di, n } = planDayIndex(p, k);
+      return `<div class="pc" style="--pc:${planColor(p)}" data-plan-week="${p.id}"><span>${esc(p.title)}</span>
+        <small>${ss.map((x) => fmtShort(x.min)).join(' + ')}${n > 1 ? ` · ${di}/${n}` : ''}</small></div>`;
+    }).join('')}</div>`;
+    cols += `<div class="wk-col ${cls}" data-key="${k}">${weekEvents(lists[i].filter((it) => it.time), k, minH)}${weekSessEvents(sessBlocks[i], k, minH)}`;
     if (k === today && nowMin() >= minH * 60 && nowMin() < maxH * 60) {
       cols += `<div class="wk-now" style="top:${(nowMin() - minH * 60) / 60 * HOUR_PX}px"></div>`;
     }
@@ -361,7 +387,7 @@ function renderWeek() {
   for (let h = minH; h < maxH; h++) times += `<div class="wk-time">${pad(h)}.00</div>`;
 
   $('#weekBody').innerHTML = `<div class="wk" style="--hours:${hours};--hour:${HOUR_PX}px" data-min="${minH}">
-    ${head}${allday}<div class="wk-times">${times}</div>${cols}</div>`;
+    ${head}${loadRow}${planRow}${allday}<div class="wk-times">${times}</div>${cols}</div>`;
 
   // Di layar sempit, geser otomatis supaya kolom tanggal terpilih terlihat
   const sc = $('#weekBody');
@@ -369,6 +395,13 @@ function renderWeek() {
     const col = sc.querySelector('.wk-day.selected');
     if (col) sc.scrollLeft = col.offsetLeft - 52;
   }
+}
+
+// Sesi rencana kerja yang sudah berjam, digambar bergaris di kolom hari
+function weekSessEvents(list, k, minH) {
+  return list.map((b) => `<div class="wk-ev sess${b.x.done ? ' done' : ''}" data-plan="${b.p.id}" data-day="${k}" data-sess="${b.x.id}"
+    style="--c:${b.color};top:${(b.s - minH * 60) / 60 * HOUR_PX}px;height:${(b.e - b.s) / 60 * HOUR_PX - 2}px;left:2px;width:calc(100% - 4px)">
+    <b>${esc(b.p.title)}</b><span>${dotTime(hhmm(b.s))} - ${dotTime(hhmm(b.e))} · Sesi ${b.i + 1}/${b.n}</span></div>`).join('');
 }
 
 // Susun event yang bertumpuk jamnya menjadi beberapa lajur berdampingan
@@ -715,7 +748,16 @@ $('#dayItems').addEventListener('click', onListClick);
 $('#dvBody').addEventListener('click', onListClick);
 
 $('#weekBody').addEventListener('click', (e) => {
-  const day = e.target.closest('[data-day]');
+  const pw = e.target.closest('[data-plan-week]');
+  if (pw) { openPlanForm(planById(pw.dataset.planWeek)); return; }
+  const se = e.target.closest('[data-sess]');
+  if (se) {
+    const p = planById(se.dataset.plan);
+    const s = p && planDay(p, se.dataset.day).sessions.find((x) => x.id === se.dataset.sess);
+    if (s) openSessForm(p, se.dataset.day, s);
+    return;
+  }
+  const day = e.target.closest('.wk-day[data-day]');
   if (day) { selected = day.dataset.day; setMode('day'); return; }
   const ev = e.target.closest('[data-id]');
   if (ev) {
@@ -976,7 +1018,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, fileKinds, files, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, fileKinds, files, todos, plans, daySettings: dset, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -1028,6 +1070,10 @@ $('#importFile').addEventListener('change', async (e) => {
       files = [...byFile.values()];
       saveFiles();
     }
+    const mergeById = (cur, inc) => { const m = new Map(cur.map((x) => [x.id, x])); for (const x of inc) if (x && x.id) m.set(String(x.id), x); return [...m.values()]; };
+    if (Array.isArray(data.todos)) { todos = mergeById(todos, data.todos.filter((t) => t.text && t.date)); saveTodos(); }
+    if (Array.isArray(data.plans)) { plans = mergeById(plans, data.plans.filter((p) => p.title && Array.isArray(p.days))); savePlans(); }
+    if (data.daySettings && typeof data.daySettings === 'object') { dset = { ...DEFAULT_DSET, ...data.daySettings }; saveDset(); }
     if (Array.isArray(data.sessions)) {
       const bySess = new Map(sessions.map((x) => [x.id, x]));
       for (const x of data.sessions) if (x && x.id && Number.isFinite(x.start) && Number.isFinite(x.min)) bySess.set(String(x.id), x);
