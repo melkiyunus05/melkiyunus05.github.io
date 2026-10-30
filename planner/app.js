@@ -25,6 +25,9 @@ const MODE_KEY = 'elio-planner-mode';
 const PAGE_KEY = 'elio-planner-page';
 const FOCUS_KEY = 'elio-planner-focus-v1';
 const FOCUS_MAX = 3;
+// Kotak Fokus dihapus dari tampilan Hari supaya tidak ramai, jadi tombol ◎ juga disembunyikan.
+// Data fokus lama tetap disimpan; ubah ke true untuk menampilkannya lagi.
+const FOCUS_ENABLED = false;
 const FIRED_KEY = 'elio-planner-fired-v1';
 const REMIND_LABELS = { 0: 'saat mulai', 10: '10 mnt', 30: '30 mnt', 60: '1 jam', 180: '3 jam', 1440: 'H-1', 4320: 'H-3' };
 const HOUR_PX = 48; // tinggi satu jam di tampilan mingguan
@@ -199,10 +202,10 @@ function applyMode() {
   $('#weekView').hidden = mode !== 'week';
   $('#monthView').hidden = mode !== 'month';
   for (const b of $('#modeSeg').children) b.classList.toggle('on', b.dataset.mode === mode);
-  // Di tampilan Hari, isi tanggal sudah tampil di tengah, jadi panel samping cukup menampilkan "Mendatang"
-  $('.tabs').hidden = mode === 'day';
-  if (mode === 'day') { $('#dayPanel').hidden = true; $('#upcomingPanel').hidden = false; }
-  else showTab(sideTab);
+  // Tampilan Hari dibuat sesederhana mungkin: hanya jam dan to-do, tanpa panel samping
+  $('#calPage').classList.toggle('day-only', mode === 'day');
+  $('.tabs').hidden = false;
+  if (mode !== 'day') showTab(sideTab);
 }
 
 function setMode(m) {
@@ -295,45 +298,18 @@ function renderDay() {
 
 function renderDayView() {
   const k = selected;
-  const today = toKey(new Date());
   $('#dvTitle').textContent = prettyDate(k);
   $('#dvSub').textContent = relDay(k);
-  const fl = focusOn(k);
-  const list = itemsOn(k).filter((it) => !fl.some((f) => f.id === it.id && f.k === k)); // yang sudah jadi fokus tidak diulang
-  const timed = list.filter((it) => it.time);
-  const untimed = list.filter((it) => !it.time);
-
-  // Tandai jadwal yang sedang berlangsung dan berikutnya (hanya untuk hari ini)
-  const status = new Map();
-  if (k === today) {
-    const now = nowMin();
-    let nextFound = false;
-    for (const it of timed) {
-      if (toMin(it.time) <= now && now < endMin(it)) status.set(it.id, 'now');
-      else if (!nextFound && toMin(it.time) > now) { status.set(it.id, 'next'); nextFound = true; }
-    }
-  }
-
-  const section = (title, rows, empty) => `<h3 class="sec-title">${title}</h3>` +
-    (rows.length ? `<ul class="items">${rows.join('')}</ul>` : `<p class="sec-empty">${empty}</p>`);
-  const focusItems = fl.map((f) => ({ it: items.find((x) => x.id === f.id), k: f.k }));
-  const fDone = focusItems.filter((f) => isDone(f.it, f.k)).length;
-  const fTitle = `Fokus${k === today ? ' hari ini' : ''} <span class="focus-count">${fl.length ? `${fDone}/${fl.length} selesai` : `maks ${FOCUS_MAX}`}</span>`;
-  const fEmpty = `Pilih maksimal ${FOCUS_MAX} hal terpenting untuk diselesaikan. Tekan <span class="focus-icon">&#9678;</span> pada tugas mana pun, termasuk deadline di daftar Mendatang.`;
-  // Urutan: pindahan to-do kemarin, Jam harian (jadwal + sesi berjam), Fokus, To-do, lalu tugas tanpa jam
-  const focusedIds = new Set(fl.filter((f) => f.k === k).map((f) => f.id));
+  // Kiri: jam (jadwal tetap cukup terlihat di jam). Kanan: satu daftar to-do berisi rencana kerja,
+  // tugas kalender hari itu, dan to-do kecil.
+  const tasks = itemsOn(k).filter((it) => cat(it.type).checkable || !it.time);
+  // Ketikan di kolom to-do tidak hilang saat tampilan diperbarui
   const q = $('#quickTodo');
   const draft = q ? q.value : '';
   const hadFocus = document.activeElement === q;
   $('#dvBody').innerHTML =
     carryBannerHtml(k) +
-    clockCardHtml(k, focusedIds, status) +
-    `<div class="focus-box${fl.length && fDone === fl.length ? ' all-done' : ''}">` +
-    section(fTitle, focusItems.map((f) => itemHtml(f.it, f.k, { focusDate: k, countdown: f.k !== k })), fEmpty) +
-    (fl.length && fDone === fl.length ? '<p class="focus-done">Semua fokus selesai. Mantap!</p>' : '') + '</div>' +
-    todoBoxHtml(k) +
-    section('Tugas dan lainnya', untimed.map((it) => itemHtml(it, k, { focusDate: k })), 'Tidak ada tugas tanpa jam di hari ini.');
-  // Ketikan di kolom to-do tidak hilang saat tampilan diperbarui
+    `<div class="day-grid"><div class="day-left">${clockCardHtml(k)}</div><div class="day-right">${todoBoxHtml(k, tasks)}</div></div>`;
   const q2 = $('#quickTodo');
   if (q2 && draft) q2.value = draft;
   if (q2 && hadFocus) q2.focus();
@@ -491,7 +467,7 @@ function itemHtml(it, k, opts = {}) {
     const txt = n < 0 ? `Lewat ${-n} hari` : n === 0 ? 'Hari ini' : `H-${n}`;
     meta.push(`<span class="countdown${n > 3 ? ' far' : ''}">${txt}</span>`);
   }
-  const canFocus = opts.focusDate && t.checkable;
+  const canFocus = FOCUS_ENABLED && opts.focusDate && t.checkable;
   const focused = canFocus && isFocused(opts.focusDate, it.id, k);
   return `<li class="item${done ? ' done' : ''}${opts.status ? ' ' + opts.status : ''}" style="--c:${t.color}" data-id="${it.id}" data-key="${k}"${canFocus ? ` data-fd="${opts.focusDate}"` : ''}>
     ${t.checkable ? `<input type="checkbox" ${done ? 'checked' : ''} aria-label="Tandai selesai">` : ''}

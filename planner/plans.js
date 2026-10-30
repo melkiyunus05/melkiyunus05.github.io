@@ -80,11 +80,6 @@ function planColor(p) {
   const it = p.linkId && items.find((i) => i.id === p.linkId);
   return p.color || (it ? cat(it.type).color : PLAN_COLORS[0]);
 }
-function planTag(p) {
-  const it = p.linkId && items.find((i) => i.id === p.linkId);
-  const c = it && courseById(it.courseId);
-  return c ? c.name : it ? labelOf(it) : 'Rencana';
-}
 
 // ---------- Parser gaya catatan WA ----------
 // Contoh: "Modul 3 TP: Sen 1, Sel 1, Rab 2, Kam 1"
@@ -173,50 +168,40 @@ function carryBannerHtml(k) {
   </div>`;
 }
 
-// ---------- Kotak "To-do hari ini" ----------
-function todoBoxHtml(k) {
+// ---------- Daftar "To-do hari ini" ----------
+// Satu daftar sederhana: rencana kerja (dengan sesinya), tugas kalender hari itu, lalu to-do kecil.
+function todoBoxHtml(k, tasks = []) {
   const load = dayLoad(k);
-  const lvl = loadLevel(load);
-  const scale = Math.max(dset.loadMax + 2, load / 60 + 1) * 60;
   const ps = plansOn(k);
   const ts = todosOn(k).sort((a, b) => a.done - b.done || a.created - b.created);
   const running = timer.status !== 'idle' && timer.phase === 'focus' && timer.target.kind === 'session' ? timer.target : null;
 
   const planCards = ps.map((p) => {
     const day = planDay(p, k);
-    const color = planColor(p);
-    const { i, n } = planDayIndex(p, k);
+    const { n } = planDayIndex(p, k);
     const tot = planTotals(p);
     const dayTot = day.sessions.reduce((a, s) => a + s.min, 0);
     const dayDone = day.sessions.reduce((a, s) => a + sessDoneMin(s), 0);
-    const it = p.linkId && items.find((x) => x.id === p.linkId);
-    const meta = [`<span class="tag">${esc(planTag(p))}</span>`];
-    if (n > 1) meta.push(`<span>Hari ke-${i} dari ${n}</span>`);
-    if (day.sessions.length > 1) meta.push(`<span>${day.sessions.length} sesi hari ini</span>`);
-    if (it) meta.push(`<span>${esc(it.title)}: ${shortDate(it.date)}</span>`);
-    const prog = n > 1
-      ? `<b>${fmtProg(tot.done, tot.total)}</b>total<div class="mini-bar"><i style="width:${tot.total ? tot.done / tot.total * 100 : 0}%"></i></div>`
-      : `<b>${fmtProg(dayDone, dayTot)}</b>hari ini<div class="mini-bar"><i style="width:${dayTot ? dayDone / dayTot * 100 : 0}%"></i></div>`;
+    const [done, total] = n > 1 ? [tot.done, tot.total] : [dayDone, dayTot];
     const chips = day.sessions.map((s, si) => {
       const run = running && running.s === s.id;
-      const done = s.done || sessDoneMin(s) >= s.min;
-      const logged = sessLogged(s.id);
-      const extra = run ? `<small>timer ${mmss(remainingMs())}</small>` : done ? '<small>selesai</small>'
-        : logged >= 1 ? `<small>${fmtShort(logged)} jalan</small>` : s.time ? `<small>${dotTime(s.time)}</small>` : '';
-      const lead = done ? '<span class="ck" data-sess-toggle>&#10003;</span>'
-        : `<button type="button" class="pl" data-sess-play aria-label="Mulai timer">${run ? '&#10074;&#10074;' : '&#9654;'}</button>`;
-      return `<span class="sess${done ? ' done' : ''}${run ? ' run' : ''}" data-plan="${p.id}" data-day="${k}" data-sess="${s.id}">
-        ${lead}<button type="button" class="t" data-sess-open>Sesi ${si + 1} · ${fmtH(s.min)}</button>${extra}</span>`;
+      const fin = s.done || sessDoneMin(s) >= s.min;
+      const extra = run ? `<small>${mmss(remainingMs())}</small>` : s.time && !fin ? `<small>${dotTime(s.time)}</small>` : '';
+      const lead = fin ? '<span class="ck" data-sess-toggle>&#10003;</span>'
+        : `<button type="button" class="pl" data-sess-play aria-label="Mulai timer">${run && timer.status === 'running' ? '&#10074;&#10074;' : '&#9654;'}</button>`;
+      return `<span class="sess${fin ? ' done' : ''}${run ? ' run' : ''}" data-plan="${p.id}" data-day="${k}" data-sess="${s.id}">
+        ${lead}<button type="button" class="t" data-sess-open>${day.sessions.length > 1 ? `Sesi ${si + 1} · ` : ''}${fmtH(s.min)}</button>${extra}</span>`;
     }).join('');
-    return `<div class="plan" style="--pc:${color}" data-plan="${p.id}">
+    return `<div class="plan" style="--pc:${planColor(p)}" data-plan="${p.id}">
       <div class="plan-top">
-        <div><button type="button" class="plan-title" data-plan-open>${esc(p.title)}</button><div class="plan-meta">${meta.join('')}</div></div>
-        <div class="plan-prog">${prog}</div>
+        <button type="button" class="plan-title" data-plan-open>${esc(p.title)}</button>
+        <span class="plan-prog" title="${n > 1 ? 'Progres total rencana' : 'Progres hari ini'}">${fmtProg(done, total)}</span>
       </div>
       <div class="sessions">${chips}</div>
     </div>`;
   }).join('');
 
+  const taskRows = tasks.map((it) => itemHtml(it, k)).join('');
   const todoRows = ts.map((t) => `<li class="todo-row${t.done ? ' done' : ''}" data-todo="${t.id}">
     <input type="checkbox" ${t.done ? 'checked' : ''} aria-label="Selesai">
     <span class="todo-text" data-todo-edit>${esc(t.text)}</span>
@@ -227,20 +212,16 @@ function todoBoxHtml(k) {
   return `<div class="todo-box">
     <div class="todo-head">
       <h3 class="sec-title">To-do${k === toKey(new Date()) ? ' hari ini' : ''}</h3>
-      <div class="load ${lvl}" title="Total jam sesi rencana kerja di hari ini">
-        <span><b>${load ? fmtH(load) : '0 jam'}</b> direncanakan</span>
-        <span class="load-bar"><i style="width:${Math.min(100, load / scale * 100)}%"></i>
-          <span class="lim" style="left:${dset.loadWarn * 60 / scale * 100}%"></span><span class="lim" style="left:${dset.loadMax * 60 / scale * 100}%"></span></span>
-        <span>batas ${dset.loadWarn} sampai ${dset.loadMax} jam</span>
-      </div>
+      ${load ? `<span class="load-text ${loadLevel(load)}" title="Total jam sesi rencana kerja. Batas ${dset.loadWarn} sampai ${dset.loadMax} jam">${fmtH(load)} direncanakan</span>` : ''}
     </div>
     <div class="quick">
-      <input id="quickTodo" maxlength="300" placeholder='Ketik to-do, atau rencana: "Modul 3 TP: Sen 1, Sel 1, Rab 2, Kam 1"' aria-label="Tambah to-do atau rencana">
+      <input id="quickTodo" maxlength="300" placeholder='Ketik to-do, atau rencana: "Modul 3 TP: Sen 1, Sel 1"' aria-label="Tambah to-do atau rencana">
       <button type="button" class="btn" data-new-plan>+ Rencana</button>
     </div>
     ${planCards}
-    ${ts.length ? `<div class="sub-label">To-do kecil</div><ul class="todo-list">${todoRows}</ul>` : ''}
-    ${!ps.length && !ts.length ? '<p class="sec-empty">Belum ada to-do. Ketik di atas lalu tekan Enter.</p>' : ''}
+    ${taskRows ? `<ul class="items day-tasks">${taskRows}</ul>` : ''}
+    ${todoRows ? `<ul class="todo-list">${todoRows}</ul>` : ''}
+    ${!planCards && !taskRows && !todoRows ? '<p class="sec-empty">Belum ada to-do. Ketik di atas lalu tekan Enter.</p>' : ''}
   </div>`;
 }
 

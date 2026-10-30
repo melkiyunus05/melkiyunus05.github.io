@@ -2,9 +2,7 @@
 // ---------- Jam Harian (jam dinding 12 jam, dua cincin) ----------
 // Cincin dalam = 00.00 sampai 12.00, cincin luar = 12.00 sampai 24.00, angka 1 sampai 12 seperti jam dinding.
 // Warna solid = jadwal tetap, bergaris = sesi rencana kerja, arsir abu = jam tidur.
-// Di sampingnya ada agenda berurutan lengkap dengan slot kosong, dan laci sesi yang belum diberi jam.
 
-const CLOCK_FOLD_KEY = 'elio-planner-clock-folded';
 const CX = 200, CY = 200;
 const RINGS = [{ r1: 108, r2: 140, from: 0, to: 720 }, { r1: 146, r2: 180, from: 720, to: 1440 }];
 
@@ -12,11 +10,6 @@ function sleepRanges() {
   const s = toMin(dset.sleepStart), e = toMin(dset.sleepEnd);
   return s > e ? [[s, 1440], [0, e]] : [[s, e]];
 }
-function awakeRange() {
-  const s = toMin(dset.sleepStart), e = toMin(dset.sleepEnd);
-  return s > e ? [e, s] : [0, 1440];
-}
-
 // Semua yang punya jam di tanggal k
 function dayBlocks(k) {
   const out = [];
@@ -38,48 +31,6 @@ function dayBlocks(k) {
   }
   return out.sort((a, b) => a.s - b.s || a.e - b.e);
 }
-function unplacedSessions(k) {
-  const out = [];
-  for (const p of plansOn(k)) planDay(p, k).sessions.forEach((x, i, arr) => { if (!x.time) out.push({ p, x, i, n: arr.length }); });
-  return out;
-}
-
-// Slot kosong di jam bangun, dikurangi jadwal dan sesi yang sudah berjam.
-// buffer: jeda (menit) yang disisakan setelah setiap kegiatan, dipakai saat mengatur otomatis.
-function freeGaps(k, minLen = 30, buffer = 0) {
-  const [wake, sleep] = awakeRange();
-  let from = wake;
-  if (k === toKey(new Date())) from = Math.max(from, Math.ceil(nowMin() / 15) * 15);
-  const busy = dayBlocks(k).filter((b) => b.kind !== 'mark').map((b) => [b.s - (b.s > from ? buffer : 0), b.e + buffer]).sort((a, b) => a[0] - b[0]);
-  const gaps = [];
-  let cur = from;
-  for (const [s, e] of busy) {
-    if (s - cur >= minLen) gaps.push([cur, Math.min(s, sleep)]);
-    cur = Math.max(cur, e);
-    if (cur >= sleep) break;
-  }
-  if (sleep - cur >= minLen) gaps.push([cur, sleep]);
-  return gaps.filter(([s, e]) => e - s >= minLen);
-}
-
-// Taruh sesi tanpa jam ke slot kosong paling awal, dengan jeda 15 menit antar kegiatan
-function autoPlace(k) {
-  const list = unplacedSessions(k);
-  if (!list.length) return;
-  const failed = [];
-  for (const u of list) {
-    // Setiap sesi yang baru diberi jam langsung ikut dihitung sebagai "sibuk" untuk sesi berikutnya
-    const gap = freeGaps(k, u.x.min, 15).find(([s, e]) => e - Math.ceil(s / 15) * 15 >= u.x.min);
-    if (!gap) { failed.push(u); continue; }
-    u.x.time = hhmm(Math.ceil(gap[0] / 15) * 15);
-  }
-  savePlans();
-  render();
-  toast(failed.length
-    ? `${list.length - failed.length} sesi diatur. ${failed.length} sesi tidak muat di slot kosong, atur jamnya manual.`
-    : `${list.length} sesi diatur ke slot kosong`);
-}
-
 // ---------- Gambar jam ----------
 const ang = (m) => ((m % 720) / 720) * 2 * Math.PI;
 const pt = (r, a) => [CX + r * Math.sin(a), CY - r * Math.cos(a)];
@@ -157,66 +108,34 @@ function clockSvg(k) {
   return `<svg class="day-clock" viewBox="0 0 400 400" role="img" aria-label="Jam harian">${g}</svg>`;
 }
 
-// ---------- Agenda berurutan ----------
-function agendaHtml(k, focusedIds, status) {
-  const today = k === toKey(new Date());
+// ---------- Kartu jam ----------
+// Sengaja sederhana: jam, keterangan warna, dan satu baris "sekarang / berikutnya".
+function nextLine(k) {
+  if (k !== toKey(new Date())) return '';
   const now = nowMin();
-  const blocks = dayBlocks(k).filter((b) => b.kind === 'sess' || !focusedIds.has(b.it.id));
-  const gaps = freeGaps(k, 60).map(([s, e]) => ({ kind: 'gap', s, e }));
-  const rows = [...blocks, ...gaps].sort((a, b) => a.s - b.s || (a.kind === 'gap') - (b.kind === 'gap'));
-  if (!rows.length) return '<p class="sec-empty">Belum ada jadwal atau sesi berjam di hari ini.</p>';
-  return `<ul class="items agenda">${rows.map((r) => {
-    if (r.kind === 'gap') {
-      return `<li class="ag-free" data-gap="${hhmm(r.s)}"><span class="ag-t">${dotTime(hhmm(r.s))} - ${dotTime(hhmm(r.e))}</span><span>Kosong ${fmtH(r.e - r.s)}</span></li>`;
-    }
-    if (r.kind === 'sess') {
-      const done = r.x.done || sessDoneMin(r.x) >= r.x.min;
-      const live = today && now >= r.s && now < r.e && !done;
-      const run = timer.status !== 'idle' && timer.target.kind === 'session' && timer.target.s === r.x.id;
-      return `<li class="ag-sess${done ? ' done' : ''}${live ? ' now' : ''}" style="--pc:${r.color}" data-plan="${r.p.id}" data-day="${k}" data-sess="${r.x.id}">
-        <span class="ag-t">${dotTime(hhmm(r.s))} - ${dotTime(hhmm(r.e))}</span>
-        <i class="ag-sw"></i>
-        <button type="button" class="ag-name" data-sess-open>${esc(r.p.title)}</button>
-        <span class="ag-k">${live ? 'SEKARANG' : done ? 'Selesai' : `Sesi ${r.i + 1}/${r.n}`}</span>
-        ${done ? '' : `<button type="button" class="play-btn" data-sess-play aria-label="Mulai timer" style="--c:${r.color}">${run && timer.status === 'running' ? '&#10074;&#10074;' : '&#9654;'}</button>`}
-      </li>`;
-    }
-    return itemHtml(r.it, k, { status: status.get(r.it.id), focusDate: k });
-  }).join('')}</ul>`;
+  const blocks = dayBlocks(k).filter((b) => b.kind !== 'mark' && b.e > now);
+  const cur = blocks.find((b) => b.s <= now);
+  const nxt = blocks.find((b) => b.s > now);
+  const name = (b) => esc(b.kind === 'sess' ? b.p.title : b.it.title);
+  if (cur) return `<p class="ck-next"><b>Sekarang</b> ${name(cur)} <span>sampai ${dotTime(hhmm(cur.e))}</span></p>`;
+  if (nxt) return `<p class="ck-next"><b>Berikutnya</b> ${name(nxt)} <span>${dotTime(hhmm(nxt.s))}</span></p>`;
+  return '';
 }
 
-function clockCardHtml(k, focusedIds, status) {
-  const folded = readPref(CLOCK_FOLD_KEY, '') === '1';
-  const un = unplacedSessions(k);
-  const head = `<div class="clock-head"><h3 class="sec-title">Jam harian</h3>
-    <div class="clock-tools">
-      <button type="button" class="link-btn" data-dayset title="Atur jam tidur dan batas beban">Tidur ${dotTime(dset.sleepStart)} - ${dotTime(dset.sleepEnd)}</button>
-      <button type="button" class="btn ghost small" data-clock-fold>${folded ? 'Tampilkan' : 'Lipat'}</button>
-    </div></div>`;
-  if (folded) return `<div class="clock-card folded">${head}</div>`;
-  return `<div class="clock-card">${head}
-    <div class="clock-grid">
-      <div class="clock-wrap">${clockSvg(k)}
-        <div class="ck-legend"><span><i class="sw solid"></i>Jadwal</span><span><i class="sw striped"></i>Sesi rencana</span><span><i class="sw sleep"></i>Tidur</span></div>
-      </div>
-      <div class="clock-side">
-        ${agendaHtml(k, focusedIds, status)}
-        ${un.length ? `<div class="tray"><b>Belum diatur jamnya:</b>
-          ${un.map((u) => `<button type="button" class="pill" style="--c:${planColor(u.p)}" data-plan="${u.p.id}" data-day="${k}" data-sess="${u.x.id}" data-sess-open>${esc(u.p.title)} · ${fmtH(u.x.min)}</button>`).join('')}
-          <span class="spacer"></span><button type="button" class="btn small primary" data-autoplace>Atur otomatis</button></div>` : ''}
-      </div>
+function clockCardHtml(k) {
+  return `<div class="clock-card">
+    <div class="clock-head"><h3 class="sec-title">Jam harian</h3>
+      <button type="button" class="link-btn" data-dayset title="Atur jam tidur dan batas beban">Tidur ${dotTime(dset.sleepStart)} - ${dotTime(dset.sleepEnd)}</button></div>
+    <div class="clock-wrap">${clockSvg(k)}
+      ${nextLine(k)}
+      <div class="ck-legend"><span><i class="sw solid"></i>Jadwal</span><span><i class="sw striped"></i>Sesi rencana</span><span><i class="sw sleep"></i>Tidur</span></div>
     </div></div>`;
 }
 
 $('#dvBody').addEventListener('click', (e) => {
-  if (e.target.closest('[data-autoplace]')) { autoPlace(selected); return; }
   if (e.target.closest('[data-dayset]')) { openDaySettings(); return; }
-  if (e.target.closest('[data-clock-fold]')) { writePref(CLOCK_FOLD_KEY, readPref(CLOCK_FOLD_KEY, '') === '1' ? '' : '1'); render(); return; }
   const seg = e.target.closest('[data-ck-item]');
-  if (seg) { const it = items.find((x) => x.id === seg.dataset.ckItem); if (it) openForm(it, selected); return; }
-  // Ketuk slot kosong: tambah item di jam itu
-  const gap = e.target.closest('[data-gap]');
-  if (gap) openForm(null, selected, { date: selected, time: gap.dataset.gap });
+  if (seg) { const it = items.find((x) => x.id === seg.dataset.ckItem); if (it) openForm(it, selected); }
 });
 
 // Jarum jam ikut bergerak tiap menit saat tampilan Hari hari ini terbuka
