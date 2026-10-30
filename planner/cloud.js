@@ -17,7 +17,16 @@ const FILES_BUCKET = 'planner-files';
 const FREE_STORAGE = 1024 * 1024 * 1024; // kuota file paket gratis Supabase
 const SETUP_GUIDE = 'https://github.com/melkiyunus05/melkiyunus05.github.io/blob/main/planner/SETUP-CLOUD.md';
 
+// Project URL cukup alamat dasarnya. Yang sering tertempel dari dashboard: .../rest/v1/ atau garis miring
+// di akhir, yang membuat Supabase menjawab "Invalid path specified in request URL".
+function baseUrl(u) {
+  try { const x = new URL(String(u).trim()); return x.protocol === 'https:' ? x.origin : ''; } catch { return ''; }
+}
 let cloudCfg = readJSON(CLOUD_CFG_KEY, null);
+if (cloudCfg && cloudCfg.url && baseUrl(cloudCfg.url) && baseUrl(cloudCfg.url) !== cloudCfg.url) {
+  cloudCfg.url = baseUrl(cloudCfg.url);
+  writeJSON(CLOUD_CFG_KEY, cloudCfg);
+}
 let sb = null;
 let cloudUser = null;
 let syncState = readJSON(SYNC_STATE_KEY, null) || { last: null, shadow: {}, uid: null, at: 0 };
@@ -188,7 +197,7 @@ function parseConnectCode(text) {
   const code = m ? decodeURIComponent(m[1]) : text;
   try {
     const cfg = JSON.parse(atob(code.replace(/-/g, '+').replace(/_/g, '/')));
-    if (cfg && cfg.u && cfg.k) return { url: cfg.u, key: cfg.k };
+    if (cfg && cfg.u && cfg.k && baseUrl(cfg.u)) return { url: baseUrl(cfg.u), key: String(cfg.k).trim() };
   } catch {}
   return null;
 }
@@ -347,9 +356,9 @@ cloudDialog.addEventListener('click', async (e) => {
   else if (a === 'connect') {
     const urlIn = $('#cfgUrl').value.trim();
     const fromCode = parseConnectCode(urlIn);
-    const url = fromCode ? fromCode.url : urlIn.replace(/\/+$/, '');
+    const url = fromCode ? fromCode.url : baseUrl(urlIn);
     const key = fromCode ? fromCode.key : $('#cfgKey').value.trim();
-    if (!/^https:\/\/[\w.-]+/.test(url) || key.length < 20) { toast('Isi Project URL dan key dengan benar.'); return; }
+    if (!url || key.length < 20) { toast('Isi Project URL (diawali https://) dan key dengan benar.'); return; }
     cloudCfg = { url, key };
     writeJSON(CLOUD_CFG_KEY, cloudCfg);
     b.disabled = true;

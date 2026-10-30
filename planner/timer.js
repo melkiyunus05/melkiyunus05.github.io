@@ -300,7 +300,7 @@ function targetOptions() {
   const groups = [];
 
   const fl = focusOn(today).map((f) => ({ it: items.find((x) => x.id === f.id), k: f.k })).filter((f) => f.it && !isDone(f.it, f.k));
-  if (fl.length) groups.push(['Fokus hari ini', fl.map((f) => opt({ kind: 'item', id: f.it.id, k: f.k }, f.it.title))]);
+  if (FOCUS_ENABLED && fl.length) groups.push(['Fokus hari ini', fl.map((f) => opt({ kind: 'item', id: f.it.id, k: f.k }, f.it.title))]);
 
   const sessOpts = [];
   for (const p of plansOn(today)) planDay(p, today).sessions.forEach((x, i) => {

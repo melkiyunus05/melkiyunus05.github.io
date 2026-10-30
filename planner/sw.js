@@ -1,5 +1,5 @@
 // Naikkan versi ini setiap kali file aplikasi diubah supaya cache diperbarui
-const CACHE = 'elio-planner-v7';
+const CACHE = 'elio-planner-v9';
 const ASSETS = [
   './',
   'index.html',

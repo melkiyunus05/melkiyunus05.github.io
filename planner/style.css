@@ -766,13 +766,6 @@ button.fname:hover { color: var(--accent); text-decoration: underline; }
 .todo-box { border: 1px solid var(--border); border-radius: 14px; padding: 4px 14px 14px; margin-top: 14px; background: var(--surface); }
 .todo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 12px 0 10px; }
 .todo-head .sec-title, .clock-head .sec-title { margin: 0; }
-.load { display: flex; align-items: center; gap: 10px; font-size: .8rem; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
-.load b { color: var(--text); }
-.load-bar { position: relative; width: 150px; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
-.load-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: #10b981; }
-.load-bar .lim { position: absolute; top: -2px; bottom: -2px; width: 2px; background: color-mix(in srgb, var(--text) 30%, transparent); }
-.load.warn i { background: #f59e0b; } .load.warn b { color: #d97706; }
-.load.over i { background: var(--danger); } .load.over b { color: var(--danger); }
 .quick { display: flex; gap: 8px; margin-bottom: 12px; }
 .quick input {
   flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--border);
@@ -783,12 +776,7 @@ button.fname:hover { color: var(--accent); text-decoration: underline; }
 .plan-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .plan-title { border: 0; background: none; padding: 0; font-weight: 700; font-size: 1rem; color: var(--text); cursor: pointer; text-align: left; }
 .plan-title:hover { color: var(--pc); }
-.plan-meta { font-size: .78rem; color: var(--muted); display: flex; gap: 4px 10px; flex-wrap: wrap; margin-top: 2px; }
-.plan-meta .tag { font-weight: 700; color: var(--pc); background: color-mix(in srgb, var(--pc) 14%, transparent); padding: 0 7px; border-radius: 99px; }
 .plan-prog { text-align: right; font-size: .75rem; color: var(--muted); white-space: nowrap; }
-.plan-prog b { display: block; font-size: .95rem; color: var(--text); }
-.mini-bar { width: 90px; height: 5px; background: var(--surface-2); border-radius: 9px; overflow: hidden; margin: 4px 0 0 auto; }
-.mini-bar i { display: block; height: 100%; background: var(--pc); }
 .sessions { display: flex; flex-wrap: wrap; gap: 6px; }
 .sess {
   display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 5px; border-radius: 10px;
@@ -833,13 +821,25 @@ button.fname:hover { color: var(--accent); text-decoration: underline; }
 .carry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 
 /* ---------- Jam harian ---------- */
+/* Tampilan Hari: jam di kiri, to-do di kanan, tanpa panel samping */
+.layout.day-only { grid-template-columns: minmax(0, 1fr); max-width: 1180px; }
+.layout.day-only .side { display: none; }
+.day-grid { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 14px; }
+.day-grid .clock-card, .day-grid .todo-box { margin-top: 0; }
+.day-left { position: sticky; top: 84px; }
+.ck-next { margin: 0; font-size: .9rem; text-align: center; }
+.ck-next b { color: var(--accent); margin-right: 4px; }
+.ck-next span { color: var(--muted); }
+.load-text { font-size: .8rem; font-weight: 700; color: #10b981; }
+.load-text.warn { color: #d97706; } .load-text.over { color: var(--danger); }
+.plan-top { align-items: center; }
+.plan-prog { font-size: .82rem; font-weight: 700; color: var(--muted); }
+.day-tasks { margin: 0 0 8px; }
+
 .clock-card { border: 1px solid var(--border); border-radius: 14px; padding: 4px 14px 14px; margin-top: 14px; }
-.clock-card.folded { padding-bottom: 4px; }
 .clock-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 12px 0 8px; }
-.clock-tools { display: flex; align-items: center; gap: 10px; font-size: .8rem; }
-.clock-grid { display: grid; grid-template-columns: minmax(240px, 330px) minmax(0, 1fr); gap: 18px; align-items: start; }
 .clock-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.day-clock { width: 100%; max-width: 330px; height: auto; }
+.day-clock { width: 100%; max-width: 380px; height: auto; }
 .day-clock text { font-family: inherit; }
 .ck-face { fill: var(--surface); stroke: var(--border); stroke-width: 2; }
 .ck-ring { fill: var(--surface-2); }
@@ -860,25 +860,6 @@ button.fname:hover { color: var(--accent); text-decoration: underline; }
 .ck-legend .solid { background: #10b981; }
 .ck-legend .striped { background: repeating-linear-gradient(45deg, var(--accent) 0 3px, color-mix(in srgb, var(--accent) 35%, transparent) 3px 7px); }
 .ck-legend .sleep { background: repeating-linear-gradient(-45deg, #94a3b866 0 2px, #94a3b826 2px 6px); }
-.clock-side { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.agenda { gap: 6px; }
-.ag-free, .ag-sess {
-  list-style: none; display: grid; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; font-size: .88rem;
-}
-.ag-free { grid-template-columns: 104px minmax(0, 1fr); color: #10b981; font-weight: 600; border: 1px dashed color-mix(in srgb, #10b981 45%, transparent); cursor: copy; }
-.ag-free:hover { background: color-mix(in srgb, #10b981 8%, transparent); }
-.ag-sess { grid-template-columns: 104px 12px minmax(0, 1fr) auto 30px; border: 1px solid var(--border); border-left: 4px solid var(--pc); }
-.ag-sess.now { background: color-mix(in srgb, var(--pc) 10%, var(--surface)); }
-.ag-sess.done { opacity: .6; } .ag-sess.done .ag-name { text-decoration: line-through; }
-.ag-t { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; font-size: .82rem; }
-.ag-sw { width: 12px; height: 12px; border-radius: 4px; background: repeating-linear-gradient(45deg, var(--pc) 0 3px, color-mix(in srgb, var(--pc) 35%, transparent) 3px 6px); }
-.ag-name { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--text); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ag-k { font-size: .7rem; font-weight: 800; color: var(--muted); text-transform: uppercase; }
-.ag-sess .play-btn { --c: var(--pc); }
-.tray { border: 1px dashed var(--border); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tray b { font-size: .8rem; color: var(--muted); }
-.tray .pill { border: 0; cursor: pointer; padding: 5px 10px; border-radius: 99px; font-size: .8rem; font-weight: 700; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
-.tray .spacer { flex: 1; }
 
 /* Minggu: baris beban dan rencana */
 .wk { grid-template-rows: auto auto auto auto calc(var(--hours) * var(--hour)); }
@@ -905,6 +886,8 @@ button.fname:hover { color: var(--accent); text-decoration: underline; }
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
   .course-layout, .timer-layout { grid-template-columns: minmax(0, 1fr); }
+  .day-grid { grid-template-columns: minmax(0, 1fr); }
+  .day-left { position: static; }
   .mini-timer { right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); }
   .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Tablet dan HP: navigasi utama pindah ke bawah seperti aplikasi pada umumnya */
@@ -931,12 +914,7 @@ button.fname:hover { color: var(--accent); text-decoration: underline; }
   .quick .btn { align-self: flex-start; }
   .todo-head { flex-direction: column; align-items: flex-start; }
   .carry .btn { flex: 1; }
-  .clock-grid { grid-template-columns: minmax(0, 1fr); }
   .day-clock { max-width: 300px; }
-  .ag-sess { grid-template-columns: 98px minmax(0, 1fr) 30px; }
-  .ag-t { white-space: nowrap; font-size: .78rem; }
-  .ag-sess .ag-sw, .ag-sess .ag-k { display: none; }
-  .ag-free { grid-template-columns: 98px minmax(0, 1fr); }
   .day-row { grid-template-columns: 54px minmax(0, 1fr) auto; }
   /* Baris file di HP: jenis pindah ke bawah nama */
   .file-row { grid-template-columns: 40px minmax(0, 1fr) 32px 32px; }
