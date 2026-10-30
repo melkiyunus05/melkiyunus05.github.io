@@ -17,7 +17,9 @@ create index if not exists planner_records_sync_idx on public.planner_records (u
 
 -- updated_at selalu diisi oleh server, bukan oleh perangkat, supaya urutan sinkron konsisten
 create or replace function public.planner_touch() returns trigger
-language plpgsql as $$
+language plpgsql
+set search_path = ''
+as $$
 begin
   new.updated_at := clock_timestamp();
   return new;
