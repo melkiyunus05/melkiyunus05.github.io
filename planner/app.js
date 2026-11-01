@@ -217,6 +217,8 @@ function setMode(m) {
 }
 
 function setPage(p) {
+  // Membuka halaman Timer dari menu selalu kembali ke tampilan Timer, bukan ke Catatan Belajar terakhir
+  if (p !== page && typeof studyDay !== 'undefined') studyDay = null;
   page = p;
   writePref(PAGE_KEY, p);
   document.body.dataset.page = p;
@@ -994,7 +996,7 @@ $('#menuBtn').addEventListener('click', (e) => { e.stopPropagation(); menu.hidde
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
 
 $('#exportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, fileKinds, files, todos, plans, daySettings: dset, items }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'elio-planner', version: 2, exported: new Date().toISOString(), categories: cats, focus, courses, comps, sessions, fileKinds, files, todos, plans, daySettings: dset, dayNotes, items }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `planner-backup-${toKey(new Date())}.json`;
@@ -1047,6 +1049,7 @@ $('#importFile').addEventListener('change', async (e) => {
       saveFiles();
     }
     const mergeById = (cur, inc) => { const m = new Map(cur.map((x) => [x.id, x])); for (const x of inc) if (x && x.id) m.set(String(x.id), x); return [...m.values()]; };
+    if (Array.isArray(data.dayNotes)) { dayNotes = mergeById(dayNotes, data.dayNotes.filter((n) => n.text)); saveDayNotes(); }
     if (Array.isArray(data.todos)) { todos = mergeById(todos, data.todos.filter((t) => t.text && t.date)); saveTodos(); }
     if (Array.isArray(data.plans)) { plans = mergeById(plans, data.plans.filter((p) => p.title && Array.isArray(p.days))); savePlans(); }
     if (data.daySettings && typeof data.daySettings === 'object') { dset = { ...DEFAULT_DSET, ...data.daySettings }; saveDset(); }

@@ -19,6 +19,8 @@ let sessions = readJSON(SESSIONS_KEY, []);
 if (!Array.isArray(sessions)) sessions = [];
 let timer = readJSON(TIMER_KEY, null) || idleTimer();
 let audioCtx = null;
+let weekOffset = 0;  // 0 = minggu ini, -1 = minggu lalu, dst. (grafik di halaman Timer)
+let studyDay = null; // tanggal yang sedang dibuka di halaman Catatan Belajar
 let wakeLock = null;
 
 function readJSON(key, fallback) {
@@ -110,8 +112,8 @@ function resumeTimer() {
 function finishFocus() {
   const elapsed = timer.duration - remainingMs();
   if (timer.phase === 'focus' && elapsed >= 60000) {
-    logSession(elapsed, Date.now());
-    toast(`${fmtDur(elapsed / 60000)} fokus tercatat`);
+    const rec = logSession(elapsed, Date.now());
+    timerAlert(`${fmtDur(elapsed / 60000)} fokus tercatat`, rec.title, [], { noteFor: rec.id });
   } else if (timer.phase === 'focus') toast('Kurang dari 1 menit, tidak dicatat');
   timer = idleTimer(timer.target, timer.cycle);
   saveTimer();
@@ -140,6 +142,7 @@ function logSession(ms, endTs) {
   });
   saveSessions();
   onFocusLogged(sessions[sessions.length - 1]);
+  return sessions[sessions.length - 1];
 }
 
 // Dipanggil tiap detik. Kalau fase sudah habis (termasuk saat aplikasi baru dibuka lagi), lanjutkan siklusnya.
@@ -152,7 +155,7 @@ function tickTimer() {
 function completePhase() {
   const endedAt = timer.endsAt;
   if (timer.phase === 'focus') {
-    logSession(timer.duration, endedAt);
+    const rec = logSession(timer.duration, endedAt);
     timer.cycle += 1;
     const next = timer.cycle % tset.every === 0 ? 'long' : 'short';
     // Istirahat langsung berjalan, dihitung dari saat fokus selesai
@@ -164,7 +167,7 @@ function completePhase() {
     if (Date.now() < timer.endsAt) {
       chime(3);
       const msg = `Kerja bagus! Waktunya ${PHASES[next].label.toLowerCase()} ${phaseMs(next) / 60000} menit.`;
-      timerAlert('Sesi fokus selesai', msg, [{ label: 'Lewati istirahat', fn: skipBreak }]);
+      timerAlert('Sesi fokus selesai', msg, [{ label: 'Lewati istirahat', fn: skipBreak }], { noteFor: rec.id });
       systemNotify('Sesi fokus selesai', msg, 'timer');
     }
   } else {
@@ -202,13 +205,15 @@ function courseMinutes(id, fromKey) {
 
 // ---------- Render ----------
 function renderTimer() {
+  if (studyDay) { renderStudyDay(studyDay); return; }
   const today = toKey(new Date());
-  const ws = toKey(weekStart(today));
+  const ws = toKey(addDays(weekStart(today), weekOffset * 7));
+  const we = toKey(addDays(fromKey(ws), 7));
   const todayMin = minutesOn(today);
   const todaySessions = sessions.filter((s) => sessionDay(s) === today).sort((a, b) => b.start - a.start);
   const goalPct = Math.min(100, todayMin / tset.goal * 100);
 
-  // Grafik 7 hari minggu ini
+  // Grafik 7 hari (minggu ini, atau minggu yang dipilih dengan tombol ‹ ›)
   const days = Array.from({ length: 7 }, (_, i) => toKey(addDays(fromKey(ws), i)));
   const dayMin = days.map(minutesOn);
   const maxMin = Math.max(tset.goal, ...dayMin, 1);
@@ -217,7 +222,7 @@ function renderTimer() {
   // Per mata kuliah minggu ini
   const byCourse = new Map();
   for (const s of sessions) {
-    if (sessionDay(s) < ws) continue;
+    if (sessionDay(s) < ws || sessionDay(s) >= we) continue;
     const key = courseById(s.courseId) ? s.courseId : '';
     byCourse.set(key, (byCourse.get(key) || 0) + s.min);
   }
@@ -267,18 +272,20 @@ function renderTimer() {
         <div class="goal-bar${goalPct >= 100 ? ' done' : ''}"><i style="width:${goalPct}%"></i></div>
         ${goalPct >= 100 ? '<p class="ok-text">Target harian tercapai. Mantap!</p>' : ''}
 
-        <h3>Minggu ini <span class="muted small-n">${fmtDur(weekTotal)}</span></h3>
-        <div class="week-bars">${days.map((k, i) => `<div class="wb${k === today ? ' today' : ''}" title="${shortDate(k)}: ${fmtDur(dayMin[i])}">
+        <div class="wk-chart-head"><h3>${weekLabel(ws)} <span class="muted small-n">${fmtDur(weekTotal)}</span></h3>
+          <span class="week-nav"><button type="button" class="icon-btn small" data-wk-nav="-1" aria-label="Minggu sebelumnya">&#8249;</button>
+          <button type="button" class="icon-btn small" data-wk-nav="1" aria-label="Minggu berikutnya" ${weekOffset >= 0 ? 'disabled' : ''}>&#8250;</button></span></div>
+        <div class="week-bars">${days.map((k, i) => `<button type="button" class="wb${k === today ? ' today' : ''}" data-study-day="${k}" title="${shortDate(k)}: ${fmtDur(dayMin[i])}. Ketuk untuk melihat catatan">
           <div class="wb-col"><i style="height:${dayMin[i] / maxMin * 100}%"></i><span class="wb-goal" style="bottom:${tset.goal / maxMin * 100}%"></span></div>
-          <span>${DAYS[fromKey(k).getDay()].slice(0, 3)}</span></div>`).join('')}</div>
+          <span>${DAYS[fromKey(k).getDay()].slice(0, 3)}</span>${hasStudyNotes(k) ? '<em class="wb-note" aria-label="Ada catatan"></em>' : ''}</button>`).join('')}</div>
 
-        <h3>Per mata kuliah (minggu ini)</h3>
+        <h3>Per mata kuliah (${weekOffset === 0 ? 'minggu ini' : 'minggu itu'})</h3>
         ${courseRows.length ? `<div class="cr-list">${courseRows.map(([id, m]) => {
           const c = courseById(id);
           return `<div class="cr-row"><span class="cr-name">${c ? esc(c.name) : 'Di luar matkul'}</span>
             <span class="cr-bar"><i style="width:${m / courseMax * 100}%;background:${c ? c.color : 'var(--muted)'}"></i></span>
             <span class="cr-min">${fmtDur(m)}</span></div>`;
-        }).join('')}</div>` : '<p class="sec-empty">Belum ada sesi minggu ini.</p>'}
+        }).join('')}</div>` : `<p class="sec-empty">Belum ada sesi ${weekOffset === 0 ? 'minggu ini' : 'di minggu itu'}.</p>`}
 
         <h3>Riwayat hari ini</h3>
         ${todaySessions.length ? `<ul class="sess-list">${todaySessions.map((s) => {
@@ -365,7 +372,7 @@ function updateTimerDisplay() {
 function updateMiniTimer() {
   const el = $('#miniTimer');
   if (!el) return;
-  const show = timer.status !== 'idle' && page !== 'timer';
+  const show = timer.status !== 'idle' && (page !== 'timer' || !!studyDay);
   el.hidden = !show;
   if (!show) return;
   const ph = PHASES[timer.phase];
@@ -377,19 +384,29 @@ function updateMiniTimer() {
 }
 
 // ---------- Notifikasi dalam aplikasi, bunyi, layar menyala ----------
-function timerAlert(title, body, actions = []) {
+// opts.noteFor: id sesi yang baru tercatat, untuk menampilkan kolom "Apa yang kamu pelajari?"
+function timerAlert(title, body, actions = [], opts = {}) {
   for (const old of document.querySelectorAll('.alert.timer-alert')) old.remove();
   const el = document.createElement('div');
   el.className = 'alert timer-alert';
   el.style.setProperty('--c', PHASES[timer.phase].color);
   el.innerHTML = `<div class="alert-icon">&#9201;</div>
     <div class="alert-body"><b>${esc(title)}</b><span>${esc(body)}</span></div>
-    <div class="alert-actions">${actions.map((a, i) => `<button class="btn small${a.primary ? ' primary' : ''}" data-a="${i}">${esc(a.label)}</button>`).join('')}
+    ${opts.noteFor ? `<textarea class="alert-note" rows="2" maxlength="2000" placeholder="Apa yang kamu pelajari? (opsional)"></textarea>` : ''}
+    <div class="alert-actions">${opts.noteFor ? '<button class="btn small primary" data-save-note>Simpan catatan</button>' : ''}
+      ${actions.map((a, i) => `<button class="btn small${a.primary ? ' primary' : ''}" data-a="${i}">${esc(a.label)}</button>`).join('')}
       <button class="btn ghost small" data-close>Tutup</button></div>`;
+  const saveNote = () => {
+    const ta = el.querySelector('.alert-note');
+    const rec = ta && sessions.find((x) => x.id === opts.noteFor);
+    if (rec && ta.value.trim()) { rec.note = ta.value.trim().slice(0, 2000); saveSessions(); return true; }
+    return false;
+  };
   el.addEventListener('click', (e) => {
     const a = e.target.closest('[data-a]');
-    if (a) { actions[a.dataset.a].fn(); el.remove(); }
-    else if (e.target.closest('[data-close]')) el.remove();
+    if (e.target.closest('[data-save-note]')) { if (saveNote()) toast('Catatan disimpan'); el.remove(); render(); }
+    else if (a) { saveNote(); actions[a.dataset.a].fn(); el.remove(); }
+    else if (e.target.closest('[data-close]')) { saveNote(); el.remove(); }
   });
   $('#alerts').appendChild(el);
 }
@@ -428,6 +445,10 @@ function releaseWake() { if (wakeLock) { wakeLock.release().catch(() => {}); wak
 // ---------- Interaksi ----------
 const timerPage = $('#timerPage');
 timerPage.addEventListener('click', (e) => {
+  const wn = e.target.closest('[data-wk-nav]');
+  if (wn) { weekOffset = Math.min(0, weekOffset + Number(wn.dataset.wkNav)); renderTimer(); return; }
+  const sd = e.target.closest('[data-study-day]');
+  if (sd) { openStudyDay(sd.dataset.studyDay); return; }
   const b = e.target.closest('[data-tm]');
   if (b) {
     const a = b.dataset.tm;

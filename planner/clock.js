@@ -52,8 +52,9 @@ function segments(s, e, attrs, pad = 0.012) {
   return out;
 }
 
-function clockSvg(k) {
-  const blocks = dayBlocks(k);
+// opts.blocks: ganti isi jam (dipakai halaman Catatan Belajar untuk menampilkan sesi Timer)
+function clockSvg(k, opts = {}) {
+  const blocks = opts.blocks || dayBlocks(k);
   const today = k === toKey(new Date());
   const colors = [...new Set(blocks.filter((b) => b.kind === 'sess').map((b) => b.color))];
   let g = `<defs>${colors.map((c, i) => `<pattern id="cs${i}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -65,10 +66,11 @@ function clockSvg(k) {
   for (const [s, e] of sleepRanges()) g += segments(s, e, 'fill="url(#csleep)"', 0.004);
   for (const b of blocks) {
     if (b.kind === 'mark') continue;
-    const done = b.kind === 'sess' ? (b.x.done || sessDoneMin(b.x) >= b.x.min) : isDone(b.it, k);
+    const done = b.kind === 'sess' ? (b.x.done || sessDoneMin(b.x) >= b.x.min) : b.kind === 'study' ? false : isDone(b.it, k);
     const fill = b.kind === 'sess' ? `url(#cs${colors.indexOf(b.color)})` : b.color;
-    const data = b.kind === 'sess' ? `data-plan="${b.p.id}" data-day="${k}" data-sess="${b.x.id}"` : `data-ck-item="${b.it.id}"`;
-    const title = b.kind === 'sess' ? `${b.p.title} · Sesi ${b.i + 1}` : b.it.title;
+    const data = b.kind === 'sess' ? `data-plan="${b.p.id}" data-day="${k}" data-sess="${b.x.id}"`
+      : b.kind === 'study' ? `data-study-sess="${b.id}"` : `data-ck-item="${b.it.id}"`;
+    const title = b.kind === 'sess' ? `${b.p.title} · Sesi ${b.i + 1}` : b.title || b.it.title;
     g += `<g class="ck-seg${done ? ' done' : ''}" ${data}><title>${esc(title)} ${dotTime(hhmm(b.s))} - ${dotTime(hhmm(b.e))}</title>${segments(b.s, b.e, `fill="${fill}" stroke="${b.color}" stroke-width="1.5"`)}</g>`;
   }
   // Deadline: penanda segitiga kecil di cincin yang sesuai

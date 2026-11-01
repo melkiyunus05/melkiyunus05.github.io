@@ -1,5 +1,5 @@
 // Naikkan versi ini setiap kali file aplikasi diubah supaya cache diperbarui
-const CACHE = 'elio-planner-v9';
+const CACHE = 'elio-planner-v10';
 const ASSETS = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   'timer.js',
   'plans.js',
   'clock.js',
+  'study.js',
   'files.js',
   'cloud.js',
   'main.js',
