@@ -58,6 +58,7 @@ const SYNC_COLLECTIONS = {
     },
   },
   todos: { records: () => todos, apply: (l) => { todos = l; saveTodos(); } },
+  dayNotes: { records: () => dayNotes, apply: (l) => { dayNotes = l; saveDayNotes(); } },
   plans: { records: () => plans, apply: (l) => { plans = l; savePlans(); } },
   fileKinds: { records: () => ordered(fileKinds), apply: (l) => { if (l.length) { fileKinds = unordered(l); saveFileKinds(); } } },
   files: { records: () => files, apply: (l) => { files = l; saveFiles(); } },
